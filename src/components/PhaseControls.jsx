@@ -1,0 +1,203 @@
+import { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, Play, Pause, Info } from "lucide-react";
+
+const LEGEND_ITEMS = [
+  { color: "#00d4aa", shape: "dot", label: "Target Location" },
+  { color: "#f59e0b", shape: "dot", label: "Surveillance Point" },
+  { color: "#ef4444", shape: "dot", label: "Threat Point" },
+  { color: "#6366f1", shape: "dot", label: "Associate Location" },
+  { color: "#00d4aa", shape: "line", label: "Target Route" },
+  { color: "#ef4444", shape: "line", label: "Adversary Route" },
+  { color: "#f59e0b", shape: "dash", label: "Surveillance Route" },
+  { color: "#ef4444", shape: "zone", label: "High Risk Zone" },
+  { color: "#6366f1", shape: "zone", label: "Surveillance Zone" },
+];
+
+const PHASE_HOLD_MS = 7000;
+
+function getPhaseColor(phase) {
+  const name = (phase?.name || phase?.title || "").toLowerCase();
+  if (name.includes("recon") || name.includes("surveillance") || name.includes("gather")) return "#00d4aa";
+  if (name.includes("approach") || name.includes("position") || name.includes("access")) return "#f59e0b";
+  if (name.includes("exploit") || name.includes("compromise") || name.includes("extract")) return "#ef4444";
+  return "#00d4aa";
+}
+
+export default function PhaseControls({ phases, activePhase, onPhaseChange }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const timerRef = useRef(null);
+  const progressRef = useRef(null);
+  const legendRef = useRef(null);
+  const total = phases?.length || 0;
+  const phase = phases?.[activePhase];
+
+  // Auto-play logic
+  useEffect(() => {
+    if (!isPlaying || total === 0) return;
+
+    setProgress(0);
+    const startTime = Date.now();
+
+    progressRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      setProgress(Math.min(elapsed / PHASE_HOLD_MS, 1));
+    }, 50);
+
+    timerRef.current = setTimeout(() => {
+      if (activePhase < total - 1) {
+        onPhaseChange(activePhase + 1);
+      } else {
+        setIsPlaying(false);
+        setProgress(0);
+      }
+    }, PHASE_HOLD_MS);
+
+    return () => {
+      clearTimeout(timerRef.current);
+      clearInterval(progressRef.current);
+    };
+  }, [isPlaying, activePhase, total, onPhaseChange]);
+
+  // Close legend on click outside
+  useEffect(() => {
+    if (!showLegend) return;
+    const handler = (e) => {
+      if (legendRef.current && !legendRef.current.contains(e.target)) setShowLegend(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showLegend]);
+
+  if (!phases || total === 0) return null;
+
+  return (
+    <div className="shrink-0" style={{ background: "#0d0d0d" }}>
+      {/* Timeline bar */}
+      <div className="recon-timeline">
+        {phases.map((p, i) => (
+          <div
+            key={i}
+            className={`timeline-segment${i === activePhase ? " active" : ""}${i < activePhase ? " completed" : ""}`}
+            onClick={() => { setIsPlaying(false); onPhaseChange(i); }}
+            style={{ borderLeftColor: i === activePhase ? getPhaseColor(p) : undefined }}
+          >
+            <div className="timeline-phase-num">Phase {i + 1}</div>
+            <div className="timeline-phase-name">{p.title || p.name || `Phase ${i + 1}`}</div>
+          </div>
+        ))}
+        {isPlaying && (
+          <div
+            className="timeline-progress"
+            style={{ width: `${((activePhase + progress) / total) * 100}%` }}
+          />
+        )}
+      </div>
+
+      {/* Controls row */}
+      <div
+        className="relative flex items-center gap-3 px-4"
+        style={{ height: 44, borderTop: "1px solid #1a1a1a" }}
+      >
+        {/* Prev */}
+        <button
+          onClick={() => { setIsPlaying(false); onPhaseChange(Math.max(0, activePhase - 1)); }}
+          disabled={activePhase === 0}
+          className="flex items-center gap-1 text-[11px] font-medium px-2 py-1.5 rounded transition-colors duration-150 cursor-pointer"
+          style={{ color: activePhase === 0 ? "#333" : "#888", background: "transparent", border: "none" }}
+        >
+          <ChevronLeft size={13} />PREV
+        </button>
+
+        {/* Phase dots */}
+        <div className="flex items-center gap-2">
+          {phases.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setIsPlaying(false); onPhaseChange(i); }}
+              className="transition-all duration-200 cursor-pointer"
+              style={{
+                width: i === activePhase ? 10 : 8,
+                height: i === activePhase ? 10 : 8,
+                borderRadius: "50%",
+                background: i === activePhase ? "#00d4aa" : i < activePhase ? "#00d4aa55" : "#333",
+                border: i === activePhase ? "2px solid #00d4aa" : "none",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Phase label */}
+        <span className="text-[13px] text-white flex-1 ml-2">
+          <span className="font-mono text-[11px]" style={{ color: "#666" }}>
+            Phase {activePhase + 1} of {total}:
+          </span>{" "}
+          <span className="font-medium">{phase?.title}</span>
+        </span>
+
+        {/* Next */}
+        <button
+          onClick={() => { setIsPlaying(false); onPhaseChange(Math.min(total - 1, activePhase + 1)); }}
+          disabled={activePhase === total - 1}
+          className="flex items-center gap-1 text-[11px] font-medium px-2 py-1.5 rounded transition-colors duration-150 cursor-pointer"
+          style={{ color: activePhase === total - 1 ? "#333" : "#888", background: "transparent", border: "none" }}
+        >
+          NEXT<ChevronRight size={13} />
+        </button>
+
+        {/* Auto-play */}
+        <button
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded transition-all duration-150 cursor-pointer"
+          style={{
+            color: isPlaying ? "#000" : "#888",
+            background: isPlaying ? "#00d4aa" : "transparent",
+            border: isPlaying ? "1px solid #00d4aa" : "1px solid #2a2a2a",
+          }}
+        >
+          {isPlaying ? <Pause size={11} /> : <Play size={11} />}
+          {isPlaying ? "PAUSE" : "PLAY"}
+        </button>
+
+        {/* Legend toggle */}
+        <div className="relative" ref={legendRef}>
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded transition-colors duration-150 cursor-pointer"
+            style={{ color: showLegend ? "#00d4aa" : "#666", background: "transparent", border: "1px solid #2a2a2a" }}
+          >
+            <Info size={11} />LEGEND
+          </button>
+
+          {showLegend && (
+            <div
+              className="absolute bottom-full right-0 mb-2 p-4 rounded-md fade-in"
+              style={{ background: "#111", border: "1px solid #2a2a2a", width: 220, zIndex: 50 }}
+            >
+              <div className="section-label text-[9px] mb-3">MAP LEGEND</div>
+              <div className="space-y-2">
+                {LEGEND_ITEMS.map((item) => (
+                  <div key={item.label} className="flex items-center gap-2.5">
+                    {item.shape === "dot" && <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />}
+                    {item.shape === "line" && <div className="w-4 h-[2px] shrink-0 rounded-full" style={{ background: item.color }} />}
+                    {item.shape === "dash" && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <div className="w-1.5 h-[2px]" style={{ background: item.color }} />
+                        <div className="w-1.5 h-[2px]" style={{ background: item.color }} />
+                      </div>
+                    )}
+                    {item.shape === "zone" && (
+                      <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: `${item.color}20`, border: `1px solid ${item.color}60` }} />
+                    )}
+                    <span className="text-[11px]" style={{ color: "#999" }}>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

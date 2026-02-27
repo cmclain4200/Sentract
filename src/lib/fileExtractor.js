@@ -1,0 +1,52 @@
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+export const ACCEPTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'csv', 'md'];
+
+export function getFileExtension(filename) {
+  return filename.split('.').pop().toLowerCase();
+}
+
+export function isAcceptedFile(filename) {
+  return ACCEPTED_EXTENSIONS.includes(getFileExtension(filename));
+}
+
+export async function extractTextFromFile(file) {
+  const extension = getFileExtension(file.name);
+
+  switch (extension) {
+    case 'txt':
+    case 'md':
+    case 'csv':
+      return await file.text();
+
+    case 'pdf':
+      return await extractPdfText(file);
+
+    case 'docx':
+      return await extractDocxText(file);
+
+    default:
+      throw new Error(`Unsupported file type: .${extension}`);
+  }
+}
+
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((item) => item.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function extractDocxText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
