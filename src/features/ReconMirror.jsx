@@ -475,7 +475,7 @@ export default function ReconMirror() {
                     <TacticalMap scenarioData={parsedScenario} activePhase={activePhase} />
                     <button
                       onClick={() => setMapExpanded(true)}
-                      className="absolute top-3 right-3 z-10 p-2 rounded-md cursor-pointer transition-all"
+                      className="absolute top-3 left-3 z-10 p-2 rounded-md cursor-pointer transition-all"
                       style={{ background: "rgba(17,17,17,0.9)", border: "1px solid #333", color: "#888" }}
                     >
                       <Maximize2 size={14} />
