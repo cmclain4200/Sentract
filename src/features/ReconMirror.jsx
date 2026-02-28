@@ -145,7 +145,7 @@ export default function ReconMirror() {
     if (!subject?.id) return;
     supabase
       .from("assessments")
-      .select("id, created_at, parameters, narrative_output")
+      .select("id, created_at, parameters, narrative_output, scenario_json")
       .eq("subject_id", subject.id)
       .eq("type", "recon_mirror")
       .order("created_at", { ascending: false })
@@ -209,7 +209,7 @@ export default function ReconMirror() {
     try {
       const response = await callAnthropic({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
+        max_tokens: 12000,
         stream: true,
         system: SYSTEM_PROMPT,
         messages: [{
@@ -264,7 +264,7 @@ export default function ReconMirror() {
           scenario_json: scenarioJson,
           model_used: "claude-sonnet-4-20250514",
           data: {},
-        }).select("id, created_at, parameters, narrative_output").single();
+        }).select("id, created_at, parameters, narrative_output, scenario_json").single();
 
         if (saved) setAssessments((prev) => [saved, ...prev]);
       }
@@ -286,6 +286,7 @@ export default function ReconMirror() {
 
   function loadAssessment(assessment) {
     setRawOutput(assessment.narrative_output || "");
+    setParsedScenario(assessment.scenario_json || null);
     setGeneratedAt(assessment.created_at);
     setActivePhase(0);
     setShowHistory(false);

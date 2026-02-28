@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
     const body = {
       model: model || "claude-sonnet-4-20250514",
-      max_tokens: Math.min(max_tokens || 4096, 8192),
+      max_tokens: Math.min(max_tokens || 4096, 16384),
       messages,
       system: system || undefined,
     };
