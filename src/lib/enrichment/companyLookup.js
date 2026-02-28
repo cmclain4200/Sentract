@@ -1,14 +1,12 @@
-const OC_BASE = 'https://api.opencorporates.com/v0.4';
+import { searchCompanyApi, getCompanyDetailsApi } from '../api';
 
 export async function searchCompany(companyName) {
   if (!companyName || companyName.length < 3) return null;
 
   try {
-    const url = `${OC_BASE}/companies/search?q=${encodeURIComponent(companyName)}&per_page=5`;
-    const response = await fetch(url);
-    if (!response.ok) return { error: 'api_error', message: `API returned ${response.status}` };
+    const data = await searchCompanyApi(companyName);
+    if (!data) return { error: 'api_error', message: 'API request failed' };
 
-    const data = await response.json();
     const companies = data.results?.companies || [];
 
     return {
@@ -32,12 +30,9 @@ export async function searchCompany(companyName) {
 
 export async function getCompanyDetails(jurisdictionCode, companyNumber) {
   try {
-    const response = await fetch(
-      `${OC_BASE}/companies/${jurisdictionCode.toLowerCase()}/${companyNumber}`
-    );
-    if (!response.ok) return null;
+    const data = await getCompanyDetailsApi(jurisdictionCode, companyNumber);
+    if (!data) return null;
 
-    const data = await response.json();
     const company = data.results?.company;
     if (!company) return null;
 

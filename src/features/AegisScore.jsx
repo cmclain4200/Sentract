@@ -166,8 +166,8 @@ export default function AegisScore() {
                   </>
                 ) : (
                   <>
-                    <TrendingDown size={12} color="#00d4aa" />
-                    <span className="text-[11px] font-mono" style={{ color: "#00d4aa" }}>{trendDelta} from last</span>
+                    <TrendingDown size={12} color="#09BC8A" />
+                    <span className="text-[11px] font-mono" style={{ color: "#09BC8A" }}>{trendDelta} from last</span>
                   </>
                 )}
               </div>
@@ -179,9 +179,9 @@ export default function AegisScore() {
               </div>
             )}
             {delta > 0 && (
-              <div className="flex items-center gap-2 mt-4 px-3 py-1.5 rounded" style={{ background: "rgba(0,212,170,0.08)" }}>
-                <TrendingDown size={13} color="#00d4aa" />
-                <span className="text-[12px]" style={{ color: "#00d4aa" }}>{delta} points reduced</span>
+              <div className="flex items-center gap-2 mt-4 px-3 py-1.5 rounded" style={{ background: "rgba(9, 188, 138,0.08)" }}>
+                <TrendingDown size={13} color="#09BC8A" />
+                <span className="text-[12px]" style={{ color: "#09BC8A" }}>{delta} points reduced</span>
               </div>
             )}
             <button
@@ -262,7 +262,7 @@ export default function AegisScore() {
               className="flex items-center gap-2 mb-1 cursor-pointer"
               style={{ background: "transparent", border: "none" }}
             >
-              {showRemediation ? <ChevronDown size={13} color="#00d4aa" /> : <ChevronRight size={13} color="#00d4aa" />}
+              {showRemediation ? <ChevronDown size={13} color="#09BC8A" /> : <ChevronRight size={13} color="#09BC8A" />}
               <span className="section-label text-[10px]">Simulate Remediation</span>
             </button>
 
@@ -271,9 +271,9 @@ export default function AegisScore() {
                 {activeRemediations.map((r) => (
                   <label key={r.id} className="flex items-center gap-4 px-4 py-3 rounded-md cursor-pointer transition-all duration-200"
                     style={{ background: r.enabled ? "#1a1a1a" : "transparent" }}>
-                    <input type="checkbox" checked={r.enabled} onChange={() => toggleRemediation(r.id)} className="accent-[#00d4aa] w-4 h-4" />
+                    <input type="checkbox" checked={r.enabled} onChange={() => toggleRemediation(r.id)} className="accent-[#09BC8A] w-4 h-4" />
                     <span className="text-[14px] flex-1" style={{ color: "#e0e0e0" }}>{r.label}</span>
-                    <span className="text-[13px] font-mono" style={{ color: "#00d4aa" }}>
+                    <span className="text-[13px] font-mono" style={{ color: "#09BC8A" }}>
                       -{r.scoreReduction} points
                     </span>
                   </label>
@@ -301,7 +301,7 @@ export default function AegisScore() {
               style={{ background: "transparent", border: "none" }}
             >
               <div className="flex items-center gap-2">
-                <BarChart3 size={13} color="#00d4aa" />
+                <BarChart3 size={13} color="#09BC8A" />
                 <span className="section-label text-[10px]">Benchmark</span>
               </div>
               <ChevronDown size={12} color="#555" style={{ transform: showBenchmark ? "rotate(180deg)" : "none", transition: "0.2s" }} />
@@ -329,14 +329,14 @@ export default function AegisScore() {
                               className="w-full rounded-sm"
                               style={{
                                 height: `${Math.max(height, 8)}%`,
-                                background: isCurrent ? "#00d4aa" : "#1a1a1a",
+                                background: isCurrent ? "#09BC8A" : "#1a1a1a",
                                 transition: "height 0.3s ease",
                               }}
                             />
-                            <span className="text-[9px] font-mono" style={{ color: isCurrent ? "#00d4aa" : "#555" }}>
+                            <span className="text-[9px] font-mono" style={{ color: isCurrent ? "#09BC8A" : "#555" }}>
                               {bucket.label}
                             </span>
-                            <span className="text-[9px] font-mono" style={{ color: isCurrent ? "#00d4aa" : "#444" }}>
+                            <span className="text-[9px] font-mono" style={{ color: isCurrent ? "#09BC8A" : "#444" }}>
                               {isCurrent ? `[${bucket.count}]` : bucket.count}
                             </span>
                           </div>
@@ -405,5 +405,5 @@ function getTier(score) {
   if (score >= 75) return { color: "#ef4444", label: "CRITICAL" };
   if (score >= 55) return { color: "#f59e0b", label: "HIGH" };
   if (score >= 35) return { color: "#3b82f6", label: "MODERATE" };
-  return { color: "#00d4aa", label: "LOW" };
+  return { color: "#09BC8A", label: "LOW" };
 }

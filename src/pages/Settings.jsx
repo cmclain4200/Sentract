@@ -5,12 +5,10 @@ import { supabase } from "../lib/supabase";
 export default function Settings() {
   const { user, profile } = useAuth();
 
-  // Profile section state
   const [fullName, setFullName] = useState(profile?.full_name || "");
-  const [profileStatus, setProfileStatus] = useState("idle"); // idle | saving | saved | error
+  const [profileStatus, setProfileStatus] = useState("idle");
   const [profileError, setProfileError] = useState(null);
 
-  // Password section state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordStatus, setPasswordStatus] = useState("idle");
@@ -65,38 +63,38 @@ export default function Settings() {
 
   return (
     <div className="p-8">
-      <div className="max-w-lg mx-auto">
-        <div className="mb-8">
+      <div className="mx-auto" style={{ maxWidth: 560 }}>
+        <div className="mb-10">
           <span className="section-label">Configuration</span>
           <h1 className="page-title mt-1">Settings</h1>
         </div>
 
         {/* Profile Section */}
-        <div className="surface p-6 mb-6">
-          <div className="mb-5">
+        <div className="surface mb-8" style={{ padding: "28px 32px" }}>
+          <div className="mb-6">
             <span className="section-label">Profile</span>
             <p className="sub-label mt-1">Manage your account information</p>
           </div>
 
-          <form onSubmit={handleProfileSave} className="flex flex-col gap-4">
+          <form onSubmit={handleProfileSave} className="flex flex-col gap-5">
             <div>
-              <label className="sub-label block mb-1.5">Email</label>
+              <label className="sub-label block mb-2">Email</label>
               <input
                 type="email"
                 value={user?.email || ""}
                 disabled
-                className="w-full px-3 py-2 rounded text-sm outline-none"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", color: "#555" }}
+                className="w-full rounded text-[15px] outline-none"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", color: "#555", padding: "10px 14px", minHeight: 44 }}
               />
             </div>
             <div>
-              <label className="sub-label block mb-1.5">Full Name</label>
+              <label className="sub-label block mb-2">Full Name</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3 py-2 rounded text-sm text-white outline-none transition-colors"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+                className="w-full rounded text-[15px] text-white outline-none transition-colors"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
                 onFocus={(e) => (e.target.style.borderColor = "#333")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
                 placeholder="Enter your full name"
@@ -104,12 +102,12 @@ export default function Settings() {
             </div>
 
             {profileError && (
-              <div className="p-3 rounded text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>
+              <div className="p-4 rounded text-[14px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>
                 {profileError}
               </div>
             )}
             {profileStatus === "saved" && (
-              <div className="p-3 rounded text-sm" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
+              <div className="p-4 rounded text-[14px]" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
                 Profile updated successfully.
               </div>
             )}
@@ -117,11 +115,13 @@ export default function Settings() {
             <button
               type="submit"
               disabled={profileStatus === "saving"}
-              className="w-full py-2.5 rounded text-sm font-semibold transition-all duration-200 cursor-pointer"
+              className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer"
               style={{
-                background: profileStatus === "saving" ? "#0a0a0a" : "#00d4aa",
+                background: profileStatus === "saving" ? "#0a0a0a" : "#09BC8A",
                 color: profileStatus === "saving" ? "#555" : "#0a0a0a",
                 border: "none",
+                padding: "14px 32px",
+                minHeight: 48,
               }}
             >
               {profileStatus === "saving" ? "Saving..." : "Save Profile"}
@@ -130,47 +130,47 @@ export default function Settings() {
         </div>
 
         {/* Change Password Section */}
-        <div className="surface p-6">
-          <div className="mb-5">
+        <div className="surface" style={{ padding: "28px 32px" }}>
+          <div className="mb-6">
             <span className="section-label">Security</span>
             <p className="sub-label mt-1">Update your password</p>
           </div>
 
-          <form onSubmit={handlePasswordSave} className="flex flex-col gap-4">
+          <form onSubmit={handlePasswordSave} className="flex flex-col gap-5">
             <div>
-              <label className="sub-label block mb-1.5">New Password</label>
+              <label className="sub-label block mb-2">New Password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded text-sm text-white outline-none transition-colors"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+                className="w-full rounded text-[15px] text-white outline-none transition-colors"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
                 onFocus={(e) => (e.target.style.borderColor = "#333")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
               />
             </div>
             <div>
-              <label className="sub-label block mb-1.5">Confirm Password</label>
+              <label className="sub-label block mb-2">Confirm Password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded text-sm text-white outline-none transition-colors"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+                className="w-full rounded text-[15px] text-white outline-none transition-colors"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
                 onFocus={(e) => (e.target.style.borderColor = "#333")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
               />
             </div>
 
             {passwordError && (
-              <div className="p-3 rounded text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>
+              <div className="p-4 rounded text-[14px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>
                 {passwordError}
               </div>
             )}
             {passwordStatus === "saved" && (
-              <div className="p-3 rounded text-sm" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
+              <div className="p-4 rounded text-[14px]" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
                 Password updated successfully.
               </div>
             )}
@@ -178,11 +178,13 @@ export default function Settings() {
             <button
               type="submit"
               disabled={passwordStatus === "saving"}
-              className="w-full py-2.5 rounded text-sm font-semibold transition-all duration-200 cursor-pointer"
+              className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer"
               style={{
-                background: passwordStatus === "saving" ? "#0a0a0a" : "#00d4aa",
+                background: passwordStatus === "saving" ? "#0a0a0a" : "#09BC8A",
                 color: passwordStatus === "saving" ? "#555" : "#0a0a0a",
                 border: "none",
+                padding: "14px 32px",
+                minHeight: 48,
               }}
             >
               {passwordStatus === "saving" ? "Updating..." : "Update Password"}

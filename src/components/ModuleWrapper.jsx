@@ -5,23 +5,23 @@ import SectionHeader from "./common/SectionHeader";
 export default function ModuleWrapper({ label, title, profileData, minCompleteness, completeness, children }) {
   if (completeness < minCompleteness) {
     return (
-      <div className="p-8 h-full flex flex-col">
+      <div className="h-full flex flex-col" style={{ padding: "32px" }}>
         <SectionHeader label={label} title={title} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
-            <ShieldAlert size={40} className="mx-auto mb-4" style={{ color: '#333' }} />
-            <h3 className="text-lg font-semibold text-white mb-2">More data needed</h3>
-            <p className="text-sm" style={{ color: '#888' }}>
+            <ShieldAlert size={44} className="mx-auto mb-5" style={{ color: '#333' }} />
+            <h3 className="text-[20px] font-semibold text-white mb-3">More data needed</h3>
+            <p className="text-[15px]" style={{ color: '#888' }}>
               This module requires at least {minCompleteness}% profile completeness to generate
               meaningful results. Your profile is currently at {completeness}%.
             </p>
-            <p className="text-sm mt-3" style={{ color: '#555' }}>
+            <p className="text-[15px] mt-3" style={{ color: '#555' }}>
               Adding more data points — especially {suggestMissingData(profileData)} — will unlock this analysis.
             </p>
             <Link
               to="../profile"
-              className="inline-block mt-5 px-4 py-2 text-sm font-semibold rounded no-underline"
-              style={{ background: '#00d4aa', color: '#0a0a0a' }}
+              className="inline-flex items-center mt-6 rounded-md no-underline text-[15px] font-semibold"
+              style={{ background: '#09BC8A', color: '#0a0a0a', padding: '12px 28px', minHeight: 44 }}
             >
               Complete Profile
             </Link>
@@ -32,7 +32,7 @@ export default function ModuleWrapper({ label, title, profileData, minCompletene
   }
 
   return (
-    <div className="p-8 h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden" style={{ padding: "32px" }}>
       <SectionHeader label={label} title={title} />
       {children}
     </div>

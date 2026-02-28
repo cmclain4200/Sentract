@@ -12,11 +12,11 @@ const modules = [
 export default function Sidebar({ caseName, caseType }) {
   return (
     <div
-      className="w-[220px] h-full flex flex-col shrink-0"
+      className="w-[240px] h-full flex flex-col shrink-0"
       style={{ background: "#0d0d0d", borderRight: "1px solid #1a1a1a" }}
     >
       {/* Nav modules */}
-      <div className="flex-1 py-3 px-2 flex flex-col gap-0.5">
+      <div className="flex-1 py-3 px-2 flex flex-col gap-1">
         <div className="px-3 py-2 mb-2">
           <span className="sub-label" style={{ color: "#444" }}>Modules</span>
         </div>
@@ -24,27 +24,28 @@ export default function Sidebar({ caseName, caseType }) {
           <NavLink
             key={mod.key}
             to={mod.path}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] transition-all duration-150 no-underline"
+            className="flex items-center gap-3 px-3 rounded-md text-[14px] transition-all duration-150 no-underline"
             style={({ isActive }) => ({
               background: isActive ? "#1a1a1a" : "transparent",
               color: isActive ? "#fff" : "#888",
-              borderLeft: isActive ? "2px solid #00d4aa" : "2px solid transparent",
+              borderLeft: isActive ? "2px solid #09BC8A" : "2px solid transparent",
+              minHeight: 40,
             })}
           >
-            <mod.icon size={14} />
+            <mod.icon size={16} />
             <span>{mod.label}</span>
           </NavLink>
         ))}
       </div>
 
       {/* Case info at bottom */}
-      <div className="px-4 py-3" style={{ borderTop: "1px solid #1a1a1a" }}>
+      <div className="px-4 py-4" style={{ borderTop: "1px solid #1a1a1a" }}>
         {caseName && (
           <div className="mb-3">
             <div className="sub-label mb-1" style={{ color: "#444" }}>Case</div>
-            <div className="text-[12px] text-white truncate">{caseName}</div>
+            <div className="text-[13px] text-white truncate">{caseName}</div>
             {caseType && (
-              <span className="badge badge-accent mt-1" style={{ fontSize: 9 }}>
+              <span className="badge badge-accent mt-1" style={{ fontSize: 11 }}>
                 {caseType}
               </span>
             )}
@@ -52,12 +53,12 @@ export default function Sidebar({ caseName, caseType }) {
         )}
         <Link
           to="/dashboard"
-          className="flex items-center gap-1.5 text-[12px] no-underline transition-colors"
+          className="flex items-center gap-2 text-[13px] no-underline transition-colors"
           style={{ color: "#555" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#00d4aa")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#09BC8A")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
         >
-          <ArrowLeft size={12} />
+          <ArrowLeft size={14} />
           All Cases
         </Link>
       </div>

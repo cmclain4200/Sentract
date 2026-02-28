@@ -203,7 +203,7 @@ function EnrichmentStatusLines({ profile }) {
   const iconMap = {
     done: { symbol: "✓", color: "#10b981" },
     partial: { symbol: "○", color: "#888" },
-    available: { symbol: "●", color: "#00d4aa" },
+    available: { symbol: "●", color: "#09BC8A" },
   };
 
   return (
@@ -355,19 +355,12 @@ export default function Profile() {
       return;
     }
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      setUploadError("VITE_ANTHROPIC_API_KEY not set in .env");
-      setUploadState("error");
-      return;
-    }
-
     setUploadState("extracting");
     setUploadError(null);
 
     try {
       const text = await extractTextFromFile(file);
-      const extracted = await extractProfileFromText(text, apiKey);
+      const extracted = await extractProfileFromText(text);
       const summary = buildExtractionSummary(extracted);
       setExtractionResult({ extracted, summary, fileName: file.name });
       setUploadState("review");
@@ -443,7 +436,7 @@ export default function Profile() {
             <span className="text-[12px] font-mono" style={{ color: "#555" }}>Saving...</span>
           )}
           {saveStatus === "saved" && (
-            <span className="text-[12px] font-mono flex items-center gap-1" style={{ color: "#00d4aa" }}>
+            <span className="text-[12px] font-mono flex items-center gap-1" style={{ color: "#09BC8A" }}>
               <Check size={12} /> Saved
             </span>
           )}
@@ -453,7 +446,7 @@ export default function Profile() {
           <button
             onClick={handleSaveNow}
             className="px-4 py-2 rounded text-sm font-semibold cursor-pointer"
-            style={{ background: "#00d4aa", color: "#0a0a0a", border: "none" }}
+            style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}
           >
             Save Changes
           </button>
@@ -502,7 +495,7 @@ export default function Profile() {
                   <button
                     onClick={() => setShowBatchEnrich(true)}
                     className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer transition-all"
-                    style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }}
+                    style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }}
                   >
                     <Search size={11} /> Check Breaches
                   </button>
@@ -510,7 +503,7 @@ export default function Profile() {
                 <button
                   onClick={() => runAllEnrichments(profile, updateProfile)}
                   className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer transition-all"
-                  style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }}
+                  style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }}
                 >
                   <Zap size={11} /> Run All
                 </button>
@@ -525,7 +518,7 @@ export default function Profile() {
         <div className="surface p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <FileText size={14} color="#00d4aa" />
+              <FileText size={14} color="#09BC8A" />
               <span className="text-[13px] text-white font-medium">
                 Have an existing report? Upload to auto-fill
               </span>
@@ -591,7 +584,7 @@ export default function Profile() {
               <button
                 onClick={() => setUploadState("idle")}
                 className="mt-3 text-[12px] cursor-pointer"
-                style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+                style={{ background: "transparent", border: "none", color: "#09BC8A" }}
               >
                 Try again
               </button>
@@ -601,7 +594,7 @@ export default function Profile() {
           {uploadState === "review" && extractionResult && (
             <div className="p-4 rounded" style={{ background: "#0d0d0d", border: "1px solid #1a1a1a" }}>
               <div className="flex items-center gap-2 mb-3">
-                <Check size={14} color="#00d4aa" />
+                <Check size={14} color="#09BC8A" />
                 <span className="text-sm font-medium text-white">Extraction Complete</span>
               </div>
               <div className="text-[12px] mb-3" style={{ color: "#888" }}>
@@ -617,7 +610,7 @@ export default function Profile() {
                 <button
                   onClick={handleApplyExtraction}
                   className="px-4 py-2 rounded text-sm font-semibold cursor-pointer"
-                  style={{ background: "#00d4aa", color: "#0a0a0a", border: "none" }}
+                  style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}
                 >
                   Review & Edit Profile
                 </button>
@@ -823,10 +816,10 @@ function CompanyLookupPanel({ onSelect }) {
 
   return (
     <div className="mt-3 p-3 rounded fade-in" style={{ background: "#0a0a0a", border: "1px solid #1a1a1a" }}>
-      <div className="text-[10px] font-mono tracking-wider mb-2" style={{ color: "#00d4aa" }}>COMPANY LOOKUP</div>
+      <div className="text-[10px] font-mono tracking-wider mb-2" style={{ color: "#09BC8A" }}>COMPANY LOOKUP</div>
       <div className="flex gap-2 mb-3">
         <input className="form-input flex-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Company name..." onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
-        <button onClick={handleSearch} disabled={loading} className="px-3 py-1.5 rounded text-[11px] font-mono cursor-pointer" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }}>
+        <button onClick={handleSearch} disabled={loading} className="px-3 py-1.5 rounded text-[11px] font-mono cursor-pointer" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }}>
           {loading ? "..." : "Search"}
         </button>
       </div>
@@ -847,7 +840,7 @@ function CompanyLookupPanel({ onSelect }) {
                 onClick={() => handleSelect(c)}
                 disabled={loadingDetails === c.company_number}
                 className="text-[10px] font-mono shrink-0 px-2.5 py-1 rounded cursor-pointer"
-                style={{ background: "transparent", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa" }}
+                style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}
               >
                 {loadingDetails === c.company_number ? "..." : "Use This"}
               </button>
@@ -900,7 +893,7 @@ function ProfessionalSection({ profile, update, aiFields }) {
           <div className="flex gap-2">
             <input className="form-input flex-1" value={pro.organization || ""} onChange={(e) => set("organization", e.target.value)} placeholder="e.g., Apex Maritime Holdings" />
             {(pro.organization || "").length >= 3 && (
-              <button onClick={() => setShowCompanyLookup(!showCompanyLookup)} className="px-2 py-1 rounded cursor-pointer shrink-0" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }} title="Lookup company">
+              <button onClick={() => setShowCompanyLookup(!showCompanyLookup)} className="px-2 py-1 rounded cursor-pointer shrink-0" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }} title="Lookup company">
                 <Building2 size={14} />
               </button>
             )}
@@ -1109,7 +1102,7 @@ function LocationsSection({ profile, update, aiFields }) {
               <button
                 onClick={() => triggerGeocode(i)}
                 className="flex items-center gap-1.5 mt-2 text-[11px] font-mono cursor-pointer"
-                style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+                style={{ background: "transparent", border: "none", color: "#09BC8A" }}
               >
                 <MapPin size={11} /> Geocode Address
               </button>
@@ -1265,7 +1258,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
             <button
               onClick={handleCheckBreaches}
               className="text-[10px] font-mono cursor-pointer"
-              style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+              style={{ background: "transparent", border: "none", color: "#09BC8A" }}
             >
               Recheck
             </button>
@@ -1279,7 +1272,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
           <button
             onClick={handleCheckBreaches}
             className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded cursor-pointer transition-all"
-            style={{ background: "transparent", border: "1px solid transparent", color: "#00d4aa" }}
+            style={{ background: "transparent", border: "1px solid transparent", color: "#09BC8A" }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2a2a2a")}
             onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
           >
@@ -1298,7 +1291,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
 
       {/* Error state */}
       {enrichState === "error" && enrichError && (
-        <div className="mt-3 p-3 rounded" style={{ background: "#0a0a0a", borderLeft: "3px solid #ef4444", border: "1px solid rgba(0,212,170,0.1)" }}>
+        <div className="mt-3 p-3 rounded" style={{ background: "#0a0a0a", borderLeft: "3px solid #ef4444", border: "1px solid rgba(9, 188, 138,0.1)" }}>
           {enrichError.error === "no_api_key" ? (
             <>
               <div className="text-[12px]" style={{ color: "#888" }}>Breach lookup requires a HaveIBeenPwned API key.</div>
@@ -1311,7 +1304,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
               <button
                 onClick={handleCheckBreaches}
                 className="text-[11px] mt-2 cursor-pointer"
-                style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+                style={{ background: "transparent", border: "none", color: "#09BC8A" }}
               >
                 Retry
               </button>
@@ -1322,8 +1315,8 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
 
       {/* Results panel */}
       {enrichState === "done" && enrichResult && (
-        <div className="mt-3 p-3 rounded fade-in" style={{ background: "#0a0a0a", borderLeft: "3px solid #00d4aa", border: "1px solid rgba(0,212,170,0.15)" }}>
-          <div className="text-[10px] font-mono tracking-wider mb-2" style={{ color: "#00d4aa" }}>BREACH ENRICHMENT</div>
+        <div className="mt-3 p-3 rounded fade-in" style={{ background: "#0a0a0a", borderLeft: "3px solid #09BC8A", border: "1px solid rgba(9, 188, 138,0.15)" }}>
+          <div className="text-[10px] font-mono tracking-wider mb-2" style={{ color: "#09BC8A" }}>BREACH ENRICHMENT</div>
           {!enrichResult.found ? (
             <div className="flex items-center gap-2">
               <Check size={12} color="#10b981" />
@@ -1351,7 +1344,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
                         <button
                           onClick={() => handleAddBreach(b)}
                           className="text-[10px] font-mono shrink-0 cursor-pointer"
-                          style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+                          style={{ background: "transparent", border: "none", color: "#09BC8A" }}
                         >
                           + Add
                         </button>
@@ -1364,7 +1357,7 @@ function EmailEntryCard({ email, index, setEmail, removeEmail, addBreachToProfil
                 <button
                   onClick={handleAddAll}
                   className="mt-3 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer transition-all"
-                  style={{ background: "transparent", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa" }}
+                  style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}
                 >
                   Add All to Profile
                 </button>
@@ -1508,7 +1501,7 @@ function BatchEnrichModal({ profile, update, onClose }) {
             <button
               onClick={handleRun}
               className="w-full py-2.5 rounded text-sm font-semibold cursor-pointer"
-              style={{ background: "#00d4aa", color: "#0a0a0a", border: "none" }}
+              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}
             >
               Check All Breaches
             </button>
@@ -1531,7 +1524,7 @@ function BatchEnrichModal({ profile, update, onClose }) {
                 className="h-full rounded-full"
                 style={{
                   width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                  background: "#00d4aa",
+                  background: "#09BC8A",
                   transition: "width 0.3s ease",
                 }}
               />
@@ -1588,7 +1581,7 @@ function BatchEnrichModal({ profile, update, onClose }) {
                                     <button
                                       onClick={() => addBreach(b)}
                                       className="text-[10px] font-mono shrink-0 cursor-pointer"
-                                      style={{ background: "transparent", border: "none", color: "#00d4aa" }}
+                                      style={{ background: "transparent", border: "none", color: "#09BC8A" }}
                                     >
                                       + Add
                                     </button>
@@ -1612,7 +1605,7 @@ function BatchEnrichModal({ profile, update, onClose }) {
                   <button
                     onClick={addAllNew}
                     className="mt-5 w-full py-2.5 rounded text-sm font-semibold cursor-pointer"
-                    style={{ background: "transparent", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa" }}
+                    style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}
                   >
                     Add All New to Profile ({newBreachCount})
                   </button>
@@ -1660,7 +1653,7 @@ function CorporateFilingCard({ filing, index, corpHandlers, update }) {
           <div className="flex gap-2">
             <input className="form-input flex-1" value={filing.entity || ""} onChange={(e) => corpHandlers.set(index, "entity", e.target.value)} />
             {(filing.entity || "").length >= 3 && (
-              <button onClick={() => setShowLookup(!showLookup)} className="px-2 py-1 rounded cursor-pointer shrink-0" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }} title="Lookup entity">
+              <button onClick={() => setShowLookup(!showLookup)} className="px-2 py-1 rounded cursor-pointer shrink-0" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }} title="Lookup entity">
                 <Building2 size={14} />
               </button>
             )}
@@ -1681,7 +1674,7 @@ function CorporateFilingCard({ filing, index, corpHandlers, update }) {
             <span className="text-[11px]" style={{ color: "#10b981" }}>Enriched: {filing.incorporation_date && `Inc. ${filing.incorporation_date}`} {filing.status && `· ${filing.status}`}</span>
           </div>
           <div className="text-[11px] mt-1" style={{ color: "#666" }}>{filing.registered_address}</div>
-          <button onClick={addAddressToLocations} className="text-[10px] font-mono mt-1.5 cursor-pointer" style={{ background: "transparent", border: "none", color: "#00d4aa" }}>
+          <button onClick={addAddressToLocations} className="text-[10px] font-mono mt-1.5 cursor-pointer" style={{ background: "transparent", border: "none", color: "#09BC8A" }}>
             Add address to Locations →
           </button>
         </div>
@@ -1765,7 +1758,7 @@ function SocialAccountCard({ acct, index, setSocial, removeSocial }) {
       {/* Verify button */}
       {acct.platform && (acct.url || acct.handle) && verifyState === "idle" && !acct.verified && (
         <div className="mt-2 flex justify-end">
-          <button onClick={handleVerify} className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid transparent", color: "#00d4aa" }} onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2a2a2a")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}>
+          <button onClick={handleVerify} className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid transparent", color: "#09BC8A" }} onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2a2a2a")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}>
             <Search size={12} /> Verify Profile
           </button>
         </div>
@@ -1792,7 +1785,7 @@ function SocialAccountCard({ acct, index, setSocial, removeSocial }) {
                 {[verifyResult.followers != null && `Followers: ${verifyResult.followers}`, verifyResult.following != null && `Following: ${verifyResult.following}`, verifyResult.public_repos != null && `Repos: ${verifyResult.public_repos}`].filter(Boolean).join(" · ")}
               </div>
               {verifyResult.metadata?.location && <div className="text-[11px]" style={{ color: "#666" }}>Location: {verifyResult.metadata.location}</div>}
-              <button onClick={applyVerifiedData} className="mt-2 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa" }}>
+              <button onClick={applyVerifiedData} className="mt-2 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}>
                 Update Profile Entry with Verified Data
               </button>
             </>
@@ -1808,7 +1801,7 @@ function SocialAccountCard({ acct, index, setSocial, removeSocial }) {
               <div className="text-[10px] font-mono tracking-wider mb-2" style={{ color: "#f59e0b" }}>MANUAL VERIFICATION</div>
               <div className="text-[12px] mb-2" style={{ color: "#888" }}>Open this link to verify the profile:</div>
               {verifyResult.url && (
-                <a href={verifyResult.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[12px] font-mono mb-2" style={{ color: "#00d4aa" }}>
+                <a href={verifyResult.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[12px] font-mono mb-2" style={{ color: "#09BC8A" }}>
                   {verifyResult.url} <ExternalLink size={11} />
                 </a>
               )}
@@ -1884,7 +1877,7 @@ function BrokerCheckPanel({ profile, update }) {
       <div className="text-[11px] mb-3" style={{ color: "#666" }}>Subject: {fullName} · {firstState}</div>
 
       {!generated && (
-        <button onClick={handleGenerate} className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#00d4aa" }}>
+        <button onClick={handleGenerate} className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }}>
           <Search size={12} /> Generate Broker Check Links
         </button>
       )}
@@ -1924,7 +1917,7 @@ function BrokerCheckPanel({ profile, update }) {
           <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid #1e1e1e" }}>
             <span className="text-[11px]" style={{ color: "#555" }}>{checkedCount} of {brokerLinks.length} checked</span>
             {checkedCount > 0 && (
-              <button onClick={addResultsToProfile} className="text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa" }}>
+              <button onClick={addResultsToProfile} className="text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}>
                 Add All Results to Profile
               </button>
             )}
@@ -2065,7 +2058,7 @@ function BreachesSection({ profile, update, aiFields }) {
                   </span>
                 </div>
                 <div className="text-[13px] mb-1.5" style={{ color: "#888" }}>{f.detail}</div>
-                <div className="text-[11px] font-mono" style={{ color: "#00d4aa" }}>Impact on Aegis Score: +{f.aegis_impact}</div>
+                <div className="text-[11px] font-mono" style={{ color: "#09BC8A" }}>Impact on Aegis Score: +{f.aegis_impact}</div>
               </div>
             ))}
           </div>
@@ -2413,7 +2406,7 @@ function BehavioralSection({ profile, update, aiFields }) {
                   <input className="form-input" type="number" min="0" max="100" value={r.consistency != null ? Math.round(r.consistency * (r.consistency <= 1 ? 100 : 1)) : ""} onChange={(e) => setRoutine(i, "consistency", e.target.value ? parseFloat(e.target.value) / 100 : null)} />
                   {r.consistency != null && (
                     <div className="w-20 h-1.5 rounded-full shrink-0" style={{ background: "#1a1a1a" }}>
-                      <div className="h-full rounded-full" style={{ width: `${Math.round(r.consistency * (r.consistency <= 1 ? 100 : 1))}%`, background: "#00d4aa" }} />
+                      <div className="h-full rounded-full" style={{ width: `${Math.round(r.consistency * (r.consistency <= 1 ? 100 : 1))}%`, background: "#09BC8A" }} />
                     </div>
                   )}
                 </div>

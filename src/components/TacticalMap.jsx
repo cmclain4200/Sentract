@@ -6,9 +6,9 @@ import { MapPin } from "lucide-react";
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const MARKER_COLORS = {
-  target_home: "#00d4aa",
-  target_work: "#00d4aa",
-  target_routine: "#00d4aa",
+  target_home: "#09BC8A",
+  target_work: "#09BC8A",
+  target_routine: "#09BC8A",
   surveillance_point: "#f59e0b",
   staging_area: "#ef4444",
   interception_point: "#ef4444",
@@ -18,7 +18,7 @@ const MARKER_COLORS = {
 };
 
 const ROUTE_COLORS = {
-  target_route: "#00d4aa",
+  target_route: "#09BC8A",
   adversary_route: "#ef4444",
   surveillance_route: "#f59e0b",
   escape_route: "#666",
@@ -386,7 +386,7 @@ export default function TacticalMap({ scenarioData, activePhase, onLocationClick
     const activeLocs = sd.key_locations.filter((l) => activeIds.has(l.id));
     activeLocs.forEach((loc, i) => {
       const pulseId = `pulse-${activePhase}-${i}`;
-      const color = MARKER_COLORS[loc.type] || "#00d4aa";
+      const color = MARKER_COLORS[loc.type] || "#09BC8A";
       try {
         m.addSource(pulseId, {
           type: "geojson",
@@ -504,10 +504,10 @@ export default function TacticalMap({ scenarioData, activePhase, onLocationClick
         <MapPin size={28} color="#333" />
         <div className="text-[14px]" style={{ color: "#555" }}>Map requires Mapbox token</div>
         <div className="text-[12px]" style={{ color: "#444" }}>
-          Add <code className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: "#00d4aa" }}>VITE_MAPBOX_TOKEN</code> to{" "}
+          Add <code className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: "#09BC8A" }}>VITE_MAPBOX_TOKEN</code> to{" "}
           <code className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: "#888" }}>.env</code>
         </div>
-        <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-[11px] mt-1" style={{ color: "#00d4aa" }}>
+        <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-[11px] mt-1" style={{ color: "#09BC8A" }}>
           Get a free token at mapbox.com
         </a>
       </div>

@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-const HIBP_API_KEY = import.meta.env.VITE_HIBP_API_KEY;
+const isDev = import.meta.env.DEV;
 
 // Rate limiter — max 1 request per 1.5 seconds
 let lastRequestTime = 0;
@@ -13,24 +13,48 @@ async function rateLimitedCall(email) {
   }
   lastRequestTime = Date.now();
 
-  const { data, error } = await supabase.functions.invoke('hibp-proxy', {
-    body: { email, hibp_api_key: HIBP_API_KEY },
-  });
+  if (isDev) {
+    // In dev, use existing Supabase edge function
+    const hibpKey = import.meta.env.VITE_HIBP_API_KEY;
+    const { data, error } = await supabase.functions.invoke('hibp-proxy', {
+      body: { email, hibp_api_key: hibpKey },
+    });
 
-  if (error) {
-    // Edge function invocation error
-    return { error: 'network_error', message: error.message || 'Edge function call failed' };
+    if (error) {
+      return { error: 'network_error', message: error.message || 'Edge function call failed' };
+    }
+
+    return data;
   }
 
-  return data;
+  // Production: use Vercel serverless proxy
+  const response = await fetch(`/api/hibp?email=${encodeURIComponent(email)}`);
+
+  if (response.status === 429) {
+    return { error: 'rate_limited', message: 'Rate limited. Try again in a few seconds.' };
+  }
+
+  if (!response.ok) {
+    return { error: 'network_error', message: 'Breach check failed' };
+  }
+
+  const breaches = await response.json();
+
+  // The proxy returns raw HIBP data (array of breaches) or empty array
+  if (!Array.isArray(breaches) || breaches.length === 0) {
+    return { found: false, breaches: [] };
+  }
+
+  return { found: true, breaches };
 }
 
 export function hasHibpKey() {
-  return !!HIBP_API_KEY;
+  if (isDev) return !!import.meta.env.VITE_HIBP_API_KEY;
+  return true; // In production, the proxy has the key
 }
 
 export async function checkEmailBreaches(email) {
-  if (!HIBP_API_KEY) {
+  if (!hasHibpKey()) {
     return { error: 'no_api_key', message: 'HIBP API key not configured' };
   }
 

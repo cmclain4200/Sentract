@@ -16,7 +16,7 @@ const TYPE_ICONS = {
 };
 
 const TYPE_COLORS = {
-  organization: "#00d4aa",
+  organization: "#09BC8A",
   breach: "#ef4444",
   data_broker: "#f59e0b",
   associate: "#a855f7",
@@ -109,7 +109,7 @@ export default function CrossWire() {
             </div>
 
             {/* Summary */}
-            <div className="surface p-6 mt-6" style={{ borderTop: "2px solid #00d4aa" }}>
+            <div className="surface p-6 mt-6" style={{ borderTop: "2px solid #09BC8A" }}>
               <div className="section-label text-[10px] mb-3">Overlap Summary</div>
               <div className="flex flex-wrap gap-3">
                 {Object.entries(
@@ -156,7 +156,7 @@ function OverlapCard({ overlap, currentSubject, caseData }) {
           current
         />
         <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full" style={{ background: "#111", border: "1px solid #1e1e1e" }}>
-          <GitMerge size={18} color="#00d4aa" />
+          <GitMerge size={18} color="#09BC8A" />
         </div>
         <SubjectCard
           name={overlap.subject.name || "Unknown"}
@@ -207,9 +207,9 @@ function OverlapCard({ overlap, currentSubject, caseData }) {
 }
 
 function SubjectCard({ name, caseName, caseType, completeness, current }) {
-  const scoreColor = completeness >= 60 ? "#00d4aa" : completeness >= 30 ? "#f59e0b" : "#555";
+  const scoreColor = completeness >= 60 ? "#09BC8A" : completeness >= 30 ? "#f59e0b" : "#555";
   return (
-    <div className="flex-1 p-4 rounded" style={{ background: "#0d0d0d", border: current ? "1px solid rgba(0,212,170,0.2)" : "1px solid #1a1a1a" }}>
+    <div className="flex-1 p-4 rounded" style={{ background: "#0d0d0d", border: current ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #1a1a1a" }}>
       <div className="flex items-center gap-2 mb-2">
         <span className="section-label text-[9px]">{caseName}</span>
         {caseType && (

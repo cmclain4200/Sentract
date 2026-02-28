@@ -8,6 +8,7 @@ import PhaseControls from "../components/PhaseControls";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { profileToPromptText, countDataPoints } from "../lib/profileToPrompt";
 import { geocodeProfileLocations, formatGeocodedLocations } from "../lib/geocode";
+import { callAnthropic, hasAnthropicKey } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -178,8 +179,7 @@ export default function ReconMirror() {
   }, [activePhase]);
 
   const generate = async () => {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) { setError("VITE_ANTHROPIC_API_KEY not set"); return; }
+    if (!hasAnthropicKey()) { setError("Anthropic API key not configured"); return; }
 
     setIsGenerating(true);
     setRawOutput("");
@@ -207,31 +207,17 @@ export default function ReconMirror() {
     } catch {}
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 8000,
-          stream: true,
-          system: SYSTEM_PROMPT,
-          messages: [{
-            role: "user",
-            content: `Generate an adversarial assessment for the following subject:\n\nAdversary Type: ${adversaryType}\nObjective: ${objective}\nSophistication: ${levelLabel}\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}${geoSection}`,
-          }],
-        }),
+      const response = await callAnthropic({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 8000,
+        stream: true,
+        system: SYSTEM_PROMPT,
+        messages: [{
+          role: "user",
+          content: `Generate an adversarial assessment for the following subject:\n\nAdversary Type: ${adversaryType}\nObjective: ${objective}\nSophistication: ${levelLabel}\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}${geoSection}`,
+        }],
         signal: controller.signal,
       });
-
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`API error ${response.status}: ${errBody}`);
-      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -348,7 +334,7 @@ export default function ReconMirror() {
                     onClick={() => setSophistication(s.value)}
                     className="flex-1 text-[11px] py-2.5 transition-all duration-200 font-medium cursor-pointer"
                     style={{
-                      background: sophistication === s.value ? "#00d4aa" : "#0d0d0d",
+                      background: sophistication === s.value ? "#09BC8A" : "#0d0d0d",
                       color: sophistication === s.value ? "#000" : "#666",
                       borderLeft: i > 0 ? "1px solid #1e1e1e" : "none",
                       border: "none",
@@ -368,9 +354,9 @@ export default function ReconMirror() {
               disabled={isGenerating}
               className="w-full py-3 text-[13px] font-semibold tracking-wide rounded-md flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
               style={{
-                background: isGenerating ? "#0d0d0d" : "#00d4aa",
-                color: isGenerating ? "#00d4aa" : "#000",
-                border: isGenerating ? "1px solid rgba(0,212,170,0.2)" : "1px solid #00d4aa",
+                background: isGenerating ? "#0d0d0d" : "#09BC8A",
+                color: isGenerating ? "#09BC8A" : "#000",
+                border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
               }}
             >
               {isGenerating ? (
@@ -391,7 +377,7 @@ export default function ReconMirror() {
                   return (
                     <div key={d.label} className="flex items-center gap-2.5">
                       <span className="text-[11px] font-mono select-none" style={{ color: "#333" }}>├──</span>
-                      <Icon size={12} color={d.color || "#00d4aa"} />
+                      <Icon size={12} color={d.color || "#09BC8A"} />
                       <span className="text-[12px]" style={{ color: "#888" }}>{d.label}</span>
                     </div>
                   );
@@ -431,7 +417,7 @@ export default function ReconMirror() {
                         <button
                           onClick={() => loadAssessment(a)}
                           className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                          style={{ background: "transparent", border: "1px solid #333", color: "#00d4aa" }}
+                          style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A" }}
                         >
                           View
                         </button>
@@ -624,7 +610,7 @@ function PhaseAwareMarkdown({ markdown, activePhase, onPhaseClick, phaseRefs }) 
               key={i}
               ref={(el) => { phaseRefs.current[`phase-${section.phaseIdx}`] = el; }}
               className={`relative pl-4 py-3 my-2 rounded-r-md cursor-pointer transition-all duration-300 ${isActive ? "narrative-phase-enter" : ""}`}
-              style={{ borderLeft: isActive ? "3px solid #00d4aa" : "3px solid #2a2a2a", background: isActive ? "#111" : "transparent" }}
+              style={{ borderLeft: isActive ? "3px solid #09BC8A" : "3px solid #2a2a2a", background: isActive ? "#111" : "transparent" }}
               onClick={() => onPhaseClick(section.phaseIdx)}
             >
               <div className="narrative-header">

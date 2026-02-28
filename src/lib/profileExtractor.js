@@ -1,3 +1,5 @@
+import { callAnthropic } from './api';
+
 const SYSTEM_PROMPT = `You are a data extraction system. Your job is to read investigation reports, due diligence documents, or intelligence assessments and extract structured information about the subject(s).
 
 Extract ONLY information that is explicitly stated or clearly implied in the document. Do NOT invent, assume, or hallucinate any data points.
@@ -111,36 +113,21 @@ Return a JSON object matching this exact schema. Include only fields where you f
 
 Return ONLY the JSON object. No markdown, no backticks, no explanation.`;
 
-export async function extractProfileFromText(text, apiKey) {
+export async function extractProfileFromText(text) {
   const truncatedText = text.slice(0, 50000);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Extract structured profile data from this investigation document:\n\n${truncatedText}`,
-        },
-      ],
-    }),
+  const data = await callAnthropic({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8000,
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: `Extract structured profile data from this investigation document:\n\n${truncatedText}`,
+      },
+    ],
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error: ${response.status}`);
-  }
-
-  const data = await response.json();
   const textResponse = data.content?.[0]?.text || '';
 
   const cleaned = textResponse

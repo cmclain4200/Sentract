@@ -1,21 +1,17 @@
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+import { geocodeQuery, hasGeocodingAccess } from "./api";
 
 // Cache geocoding results so we don't re-query the same address
 const cache = new Map();
 
 export async function geocodeAddress(addressString) {
-  if (!MAPBOX_TOKEN || !addressString) return null;
+  if (!hasGeocodingAccess() || !addressString) return null;
 
   const key = addressString.trim().toLowerCase();
   if (cache.has(key)) return cache.get(key);
 
   try {
-    const encoded = encodeURIComponent(addressString);
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await geocodeQuery(addressString);
+    if (!data) return null;
     const feature = data.features?.[0];
     if (!feature) return null;
 

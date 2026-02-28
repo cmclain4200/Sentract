@@ -53,7 +53,6 @@ export default function CaseView() {
       const list = await fetchSubjects();
       setLoading(false);
 
-      // If no subjects, prompt to create one
       if (list.length === 0) {
         setShowCreateSubject(true);
       }
@@ -103,39 +102,41 @@ export default function CaseView() {
         {/* Subject selector bar */}
         {subjects.length > 0 && (
           <div
-            className="flex items-center gap-2 px-6 py-2 shrink-0"
-            style={{ borderBottom: "1px solid #1a1a1a", background: "#0a0a0a" }}
+            className="flex items-center gap-3 px-6 shrink-0"
+            style={{ borderBottom: "1px solid #1a1a1a", background: "#0a0a0a", minHeight: 48, padding: "8px 24px" }}
           >
-            <span className="sub-label mr-2" style={{ color: "#444" }}>Subject</span>
+            <span className="sub-label mr-1" style={{ color: "#444" }}>Subject</span>
             {subjects.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setActiveSubject(s)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded text-[12px] cursor-pointer transition-all"
+                className="flex items-center gap-2 rounded text-[13px] cursor-pointer transition-all"
                 style={{
                   background: activeSubject?.id === s.id ? "#1a1a1a" : "transparent",
                   border: `1px solid ${activeSubject?.id === s.id ? "#333" : "#1e1e1e"}`,
                   color: activeSubject?.id === s.id ? "#fff" : "#888",
+                  padding: "6px 14px",
+                  minHeight: 34,
                 }}
               >
-                <User size={11} />
+                <User size={13} />
                 {s.name}
               </button>
             ))}
             <button
               onClick={() => setShowCreateSubject(true)}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] cursor-pointer"
-              style={{ background: "transparent", border: "1px dashed #333", color: "#555" }}
+              className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+              style={{ background: "transparent", border: "1px dashed #333", color: "#555", padding: "6px 14px", minHeight: 34 }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#00d4aa";
-                e.currentTarget.style.color = "#00d4aa";
+                e.currentTarget.style.borderColor = "#09BC8A";
+                e.currentTarget.style.color = "#09BC8A";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = "#333";
                 e.currentTarget.style.color = "#555";
               }}
             >
-              <Plus size={11} /> Add
+              <Plus size={13} /> Add
             </button>
             {activeSubject && (
               <button
@@ -153,11 +154,13 @@ export default function CaseView() {
                   }
                 }}
                 disabled={exporting}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] cursor-pointer ml-auto"
+                className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer ml-auto"
                 style={{
                   background: "transparent",
                   border: "1px solid #333",
-                  color: exporting ? "#555" : "#00d4aa",
+                  color: exporting ? "#555" : "#09BC8A",
+                  padding: "6px 14px",
+                  minHeight: 34,
                 }}
                 onMouseEnter={(e) => {
                   if (!exporting) e.currentTarget.style.background = "#1a1a1a";
@@ -166,7 +169,7 @@ export default function CaseView() {
                   e.currentTarget.style.background = "transparent";
                 }}
               >
-                <FileDown size={11} />
+                <FileDown size={13} />
                 {exporting ? "Exporting..." : "Export PDF"}
               </button>
             )}
@@ -209,26 +212,27 @@ function CreateSubjectModal({ onClose, onCreate, isFirst }) {
       onClick={isFirst ? undefined : onClose}
     >
       <div
-        className="surface p-6 w-full max-w-sm fade-in"
+        className="surface w-full fade-in"
+        style={{ maxWidth: 480, padding: "28px 32px" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-5">
+        <div className="mb-6">
           <span className="section-label">
             {isFirst ? "Getting Started" : "New Subject"}
           </span>
-          <h2 className="text-white text-lg font-semibold mt-1">
+          <h2 className="text-white text-[22px] font-semibold mt-1">
             {isFirst ? "Add Your First Subject" : "Add Subject"}
           </h2>
           {isFirst && (
-            <p className="text-[12px] mt-2" style={{ color: "#666" }}>
+            <p className="text-[14px] mt-2" style={{ color: "#666" }}>
               A subject is the individual you're building an intelligence profile for.
             </p>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
-            <label className="sub-label block mb-1.5">Subject Name</label>
+            <label className="sub-label block mb-2">Subject Name</label>
             <input
               type="text"
               value={name}
@@ -243,11 +247,13 @@ function CreateSubjectModal({ onClose, onCreate, isFirst }) {
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="flex-1 py-2.5 rounded text-sm font-semibold cursor-pointer"
+              className="flex-1 rounded text-[15px] font-semibold cursor-pointer"
               style={{
-                background: loading || !name.trim() ? "#1a1a1a" : "#00d4aa",
+                background: loading || !name.trim() ? "#1a1a1a" : "#09BC8A",
                 color: loading || !name.trim() ? "#555" : "#0a0a0a",
                 border: "none",
+                padding: "12px 24px",
+                minHeight: 44,
               }}
             >
               {loading ? "Creating..." : "Create Subject"}
@@ -256,8 +262,8 @@ function CreateSubjectModal({ onClose, onCreate, isFirst }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded text-sm cursor-pointer"
-                style={{ background: "transparent", border: "1px solid #333", color: "#888" }}
+                className="rounded text-[14px] cursor-pointer"
+                style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "10px 20px", minHeight: 44 }}
               >
                 Cancel
               </button>

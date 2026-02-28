@@ -5,6 +5,7 @@ import { Activity, Clock, MapPin, CreditCard, MessageSquare, Zap, RefreshCw, Cop
 import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { profileToPromptText } from "../lib/profileToPrompt";
+import { callAnthropic, hasAnthropicKey } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -17,7 +18,7 @@ function getIntensityColor(intensity) {
   if (intensity < 0.4) return "#0d3329";
   if (intensity < 0.6) return "#0f4a39";
   if (intensity < 0.8) return "#00875e";
-  return "#00d4aa";
+  return "#09BC8A";
 }
 
 function pickIcon(routine) {
@@ -33,7 +34,7 @@ function pickIcon(routine) {
 function threatLevel(consistency) {
   if (consistency >= 0.8) return { label: "HIGH", color: "#ef4444" };
   if (consistency >= 0.6) return { label: "MEDIUM", color: "#f59e0b" };
-  return { label: "LOW", color: "#00d4aa" };
+  return { label: "LOW", color: "#09BC8A" };
 }
 
 function buildHeatmapFromRoutines(routines) {
@@ -157,8 +158,7 @@ export default function PatternLens() {
   }, [routines.length]);
 
   async function generateAiAnalysis() {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) { setError("VITE_ANTHROPIC_API_KEY not set"); return; }
+    if (!hasAnthropicKey()) { setError("Anthropic API key not configured"); return; }
 
     setIsGenerating(true);
     setAiOutput("");
@@ -171,28 +171,14 @@ export default function PatternLens() {
     const promptText = profileToPromptText(profileData);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          stream: true,
-          system: PATTERN_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: `Analyze behavioral patterns for the following subject:\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}` }],
-        }),
+      const response = await callAnthropic({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        stream: true,
+        system: PATTERN_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: `Analyze behavioral patterns for the following subject:\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}` }],
         signal: controller.signal,
       });
-
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`API error ${response.status}: ${errBody}`);
-      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -264,7 +250,7 @@ export default function PatternLens() {
             style={{
               background: mode === "structured" ? "#1a1a1a" : "transparent",
               border: `1px solid ${mode === "structured" ? "#333" : "#1e1e1e"}`,
-              color: mode === "structured" ? "#00d4aa" : "#666",
+              color: mode === "structured" ? "#09BC8A" : "#666",
             }}
           >
             Structured View {routines.length > 0 && `(${routines.length})`}
@@ -275,7 +261,7 @@ export default function PatternLens() {
             style={{
               background: mode === "ai" ? "#1a1a1a" : "transparent",
               border: `1px solid ${mode === "ai" ? "#333" : "#1e1e1e"}`,
-              color: mode === "ai" ? "#00d4aa" : "#666",
+              color: mode === "ai" ? "#09BC8A" : "#666",
             }}
           >
             AI Analysis
@@ -308,7 +294,7 @@ export default function PatternLens() {
                             {isHovered && cell.intensity > 0 && (
                               <div className="absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 rounded-md whitespace-nowrap"
                                 style={{ background: "#1a1a1a", border: "1px solid #333", fontSize: 12, color: "#e0e0e0" }}>
-                                <span style={{ color: "#00d4aa" }}>{day} {h}:00</span> — {cell.activities.join(", ")}
+                                <span style={{ color: "#09BC8A" }}>{day} {h}:00</span> — {cell.activities.join(", ")}
                               </div>
                             )}
                           </div>
@@ -411,9 +397,9 @@ export default function PatternLens() {
                 disabled={isGenerating}
                 className="px-5 py-2.5 text-[13px] font-semibold tracking-wide rounded-md flex items-center gap-2.5 transition-all duration-200 cursor-pointer"
                 style={{
-                  background: isGenerating ? "#0d0d0d" : "#00d4aa",
-                  color: isGenerating ? "#00d4aa" : "#000",
-                  border: isGenerating ? "1px solid rgba(0,212,170,0.2)" : "1px solid #00d4aa",
+                  background: isGenerating ? "#0d0d0d" : "#09BC8A",
+                  color: isGenerating ? "#09BC8A" : "#000",
+                  border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
                 }}
               >
                 {isGenerating ? (
@@ -486,7 +472,7 @@ export default function PatternLens() {
                     </div>
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => loadAnalysis(a)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                        style={{ background: "transparent", border: "1px solid #333", color: "#00d4aa" }}>View</button>
+                        style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A" }}>View</button>
                       <button onClick={() => deleteAnalysis(a.id)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
                         style={{ background: "transparent", border: "1px solid #333", color: "#555" }}>
                         <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete

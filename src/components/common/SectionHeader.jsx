@@ -4,7 +4,7 @@ export default function SectionHeader({ label, title }) {
       <div className="flex items-center gap-2.5 mb-2">
         <span className="section-label">{label}</span>
         <span
-          className="text-[11px] font-mono select-none"
+          className="text-[12px] font-mono select-none"
           style={{ color: "#333", letterSpacing: "0.05em" }}
         >
           &gt;&gt;&gt;

@@ -1,11 +1,11 @@
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+import { geocodeQuery, hasGeocodingAccess } from "../api";
 
 export function hasMapboxToken() {
-  return !!MAPBOX_TOKEN;
+  return hasGeocodingAccess();
 }
 
 export async function geocodeAddress(address) {
-  if (!MAPBOX_TOKEN) return null;
+  if (!hasGeocodingAccess()) return null;
 
   const query = [address.street, address.city, address.state, address.zip, address.country]
     .filter(Boolean)
@@ -14,13 +14,8 @@ export async function geocodeAddress(address) {
   if (!query || query.length < 5) return null;
 
   try {
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=1&types=address,place`
-    );
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
+    const data = await geocodeQuery(query, "address,place");
+    if (!data) return null;
 
     if (data.features && data.features.length > 0) {
       const [lng, lat] = data.features[0].center;
