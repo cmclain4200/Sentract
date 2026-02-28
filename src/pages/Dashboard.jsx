@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { syncRelationships } from "../lib/relationshipSync";
+import { useAuth } from "../contexts/AuthContext";
 import SectionHeader from "../components/common/SectionHeader";
 
 const CASE_TYPES = [
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const [caseMenu, setCaseMenu] = useState(null); // case id with open menu
   const [confirmDelete, setConfirmDelete] = useState(null); // case object to confirm delete
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchCases();
@@ -405,13 +408,14 @@ export default function Dashboard() {
             setShowCreate(false);
             navigate(`/case/${newCase.id}/profile`);
           }}
+          userId={user?.id}
         />
       )}
     </div>
   );
 }
 
-function CreateCaseModal({ onClose, onCreated }) {
+function CreateCaseModal({ onClose, onCreated, userId }) {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [type, setType] = useState("EP");
@@ -443,10 +447,16 @@ function CreateCaseModal({ onClose, onCreated }) {
     }
 
     if (autoCreateSubject && data) {
-      await supabase.from("subjects").insert({
-        case_id: data.id,
-        name: name,
-      });
+      const { data: subjectData } = await supabase
+        .from("subjects")
+        .insert({ case_id: data.id, name: name })
+        .select()
+        .single();
+
+      // Fire-and-forget: sync relationships for auto-created subject
+      if (subjectData && userId) {
+        syncRelationships(subjectData, userId);
+      }
     }
 
     onCreated(data);

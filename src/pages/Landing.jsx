@@ -3,11 +3,18 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./Landing.css";
 
-function useScrollReveal(containerRef) {
+function useScrollReveal(containerRef, ready = true) {
   useEffect(() => {
+    if (!ready) return;
     const el = containerRef.current;
     if (!el) return;
     const targets = el.querySelectorAll(".l-reveal");
+
+    if (!("IntersectionObserver" in window)) {
+      targets.forEach((t) => t.classList.add("visible"));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry, i) => {
@@ -20,8 +27,19 @@ function useScrollReveal(containerRef) {
       { threshold: 0.12 }
     );
     targets.forEach((t) => observer.observe(t));
-    return () => observer.disconnect();
-  }, [containerRef]);
+
+    // Safety net: force-show anything still hidden after 3s
+    const timeout = setTimeout(() => {
+      el.querySelectorAll(".l-reveal:not(.visible)").forEach((t) => {
+        t.classList.add("visible");
+      });
+    }, 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [containerRef, ready]);
 }
 
 export default function Landing() {
@@ -29,7 +47,7 @@ export default function Landing() {
   const containerRef = useRef(null);
   const [navScrolled, setNavScrolled] = useState(false);
 
-  useScrollReveal(containerRef);
+  useScrollReveal(containerRef, !loading);
 
   useEffect(() => {
     const handler = () => setNavScrolled(window.scrollY > 20);

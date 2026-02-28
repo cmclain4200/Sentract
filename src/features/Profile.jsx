@@ -14,6 +14,9 @@ import { analyzeCredentialRisk } from "../lib/enrichment/passwordAnalysis";
 import { searchCompany, getCompanyDetails } from "../lib/enrichment/companyLookup";
 import { verifySocialProfile } from "../lib/enrichment/socialVerify";
 import { generateBrokerCheckUrls } from "../lib/enrichment/brokerCheck";
+import { syncRelationships } from "../lib/relationshipSync";
+import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../components/Toast";
 
 const TABS = [
   { key: "identity", label: "Identity" },
@@ -221,51 +224,172 @@ function EnrichmentStatusLines({ profile }) {
 // ── Run All Automatic Enrichments ──
 
 async function runAllEnrichments(profile, updateProfile) {
-  // 1. Geocode all ungeooded addresses
-  const addresses = profile.locations?.addresses || [];
-  for (let i = 0; i < addresses.length; i++) {
-    const addr = addresses[i];
-    if (!addr.coordinates && addr.street && addr.city) {
-      const result = await geocodeAddress(addr);
-      if (result) {
-        updateProfile((p) => {
-          const addrs = [...(p.locations?.addresses || [])];
-          addrs[i] = { ...addrs[i], coordinates: result.coordinates, geocode_confidence: result.confidence, formatted_address: result.formatted_address };
-          return { ...p, locations: { ...p.locations, addresses: addrs } };
-        });
+  const results = { geocoded: 0, breaches: 0, socials: 0, company: false, brokers: 0, errors: 0 };
+
+  try {
+    // 1. Geocode all un-geocoded addresses
+    const addresses = profile.locations?.addresses || [];
+    for (let i = 0; i < addresses.length; i++) {
+      const addr = addresses[i];
+      if (!addr.coordinates && addr.street && addr.city) {
+        try {
+          const result = await geocodeAddress(addr);
+          if (result) {
+            updateProfile((p) => {
+              const addrs = [...(p.locations?.addresses || [])];
+              addrs[i] = { ...addrs[i], coordinates: result.coordinates, geocode_confidence: result.confidence, formatted_address: result.formatted_address };
+              return { ...p, locations: { ...p.locations, addresses: addrs } };
+            });
+            results.geocoded++;
+          }
+        } catch { results.errors++; }
       }
     }
-  }
 
-  // 2. Check all unchecked emails for breaches
-  if (hasHibpKey()) {
-    const emails = profile.contact?.email_addresses || [];
-    for (let i = 0; i < emails.length; i++) {
-      const email = emails[i];
-      if (email.address && email.enrichment?.status !== "checked") {
-        const result = await checkEmailBreaches(email.address);
-        if (!result.error) {
-          updateProfile((p) => {
-            const next = [...(p.contact?.email_addresses || [])];
-            next[i] = { ...next[i], enrichment: { last_checked: new Date().toISOString(), breaches_found: result.found ? result.count : 0, status: "checked" } };
-            let breaches = p.breaches?.records || [];
-            if (result.found && result.breaches) {
-              for (const b of result.breaches) {
-                if (!isDuplicateBreach(breaches, b)) {
-                  breaches = [...breaches, b];
+    // 2. Check all unchecked emails for breaches
+    if (hasHibpKey()) {
+      const emails = profile.contact?.email_addresses || [];
+      for (let i = 0; i < emails.length; i++) {
+        const email = emails[i];
+        if (email.address && email.enrichment?.status !== "checked") {
+          try {
+            const result = await checkEmailBreaches(email.address);
+            if (!result.error) {
+              updateProfile((p) => {
+                const next = [...(p.contact?.email_addresses || [])];
+                next[i] = { ...next[i], enrichment: { last_checked: new Date().toISOString(), breaches_found: result.found ? result.count : 0, status: "checked" } };
+                let breaches = p.breaches?.records || [];
+                if (result.found && result.breaches) {
+                  for (const b of result.breaches) {
+                    if (!isDuplicateBreach(breaches, b)) {
+                      breaches = [...breaches, b];
+                    }
+                  }
                 }
-              }
+                return { ...p, contact: { ...p.contact, email_addresses: next }, breaches: { ...p.breaches, records: breaches } };
+              });
+              results.breaches++;
             }
-            return { ...p, contact: { ...p.contact, email_addresses: next }, breaches: { ...p.breaches, records: breaches } };
-          });
+          } catch { results.errors++; }
         }
       }
     }
+
+    // 3. Verify social profiles (auto-verifiable platforms only)
+    const socials = profile.digital?.social_accounts || [];
+    for (let i = 0; i < socials.length; i++) {
+      const acct = socials[i];
+      const handle = acct.url || acct.handle;
+      if (handle && acct.platform && !acct.verified) {
+        const platform = acct.platform.toLowerCase();
+        if (platform === "github") {
+          try {
+            const result = await verifySocialProfile(acct.platform, handle);
+            if (result && result.verified) {
+              updateProfile((p) => {
+                const next = [...(p.digital?.social_accounts || [])];
+                next[i] = {
+                  ...next[i],
+                  verified: true,
+                  verified_date: new Date().toISOString(),
+                  visibility: result.visibility || next[i].visibility,
+                  followers: result.followers ?? next[i].followers,
+                };
+                return { ...p, digital: { ...p.digital, social_accounts: next } };
+              });
+              results.socials++;
+            }
+          } catch { results.errors++; }
+        }
+      }
+    }
+
+    // 4. Company lookup (if org name filled and no existing enriched filings)
+    const orgName = profile.professional?.organization;
+    const existingEnrichedFilings = (profile.public_records?.corporate_filings || []).filter(f => f.source === "OpenCorporates" || f.source === "SEC EDGAR");
+    if (orgName && orgName.length >= 3 && existingEnrichedFilings.length === 0) {
+      try {
+        const searchResult = await searchCompany(orgName);
+        if (searchResult?.results?.length > 0) {
+          const topMatch = searchResult.results[0];
+          if (topMatch.cik) {
+            const details = await getCompanyDetails(topMatch.cik);
+            if (details) {
+              updateProfile((p) => {
+                const filings = [...(p.public_records?.corporate_filings || [])];
+                const exists = filings.some(f => f.source === "SEC EDGAR" && f.entity === details.name);
+                if (!exists) {
+                  filings.push({
+                    entity: details.name,
+                    role: p.professional?.title || "Associated",
+                    jurisdiction: details.state || "",
+                    source: "SEC EDGAR",
+                    ticker: details.ticker,
+                    sic_description: details.sic_description,
+                    entity_type: details.entity_type,
+                  });
+                }
+                return { ...p, public_records: { ...p.public_records, corporate_filings: filings } };
+              });
+              results.company = true;
+            }
+          }
+        }
+      } catch { results.errors++; }
+    }
+
+    // 5. Generate broker check URLs (if name + state available and none exist)
+    const fullName = profile.identity?.full_name;
+    const firstState = (profile.locations?.addresses || []).find(a => a.state)?.state;
+    const existingBrokerChecks = (profile.digital?.data_broker_listings || []).filter(b => b.source === "Sentract broker check");
+    if (fullName && firstState && existingBrokerChecks.length === 0) {
+      try {
+        const links = generateBrokerCheckUrls(fullName, firstState);
+        if (links.length > 0) {
+          updateProfile((p) => {
+            const existing = p.digital?.data_broker_listings || [];
+            const newListings = [...existing];
+            for (const b of links) {
+              const exists = existing.some(e => e.broker?.toLowerCase() === b.name.toLowerCase());
+              if (!exists) {
+                newListings.push({
+                  broker: b.name,
+                  status: "pending_check",
+                  url: b.url,
+                  data_exposed: b.notes,
+                  last_checked: new Date().toISOString().split("T")[0],
+                  source: "Sentract broker check",
+                });
+              }
+            }
+            return { ...p, digital: { ...p.digital, data_broker_listings: newListings } };
+          });
+          results.brokers = links.length;
+        }
+      } catch { results.errors++; }
+    }
+  } catch (err) {
+    console.error("runAllEnrichments error:", err);
+    results.errors++;
   }
+
+  // Build summary
+  const parts = [];
+  if (results.geocoded > 0) parts.push(`${results.geocoded} address${results.geocoded > 1 ? "es" : ""} geocoded`);
+  if (results.breaches > 0) parts.push(`${results.breaches} email${results.breaches > 1 ? "s" : ""} checked`);
+  if (results.socials > 0) parts.push(`${results.socials} social${results.socials > 1 ? "s" : ""} verified`);
+  if (results.company) parts.push("company data enriched");
+  if (results.brokers > 0) parts.push(`${results.brokers} broker checks queued`);
+  if (results.errors > 0) parts.push(`${results.errors} failed`);
+  const total = results.geocoded + results.breaches + results.socials + (results.company ? 1 : 0) + results.brokers;
+
+  return { total, summary: parts.length > 0 ? parts.join(" · ") : "No enrichments available — add data first" };
 }
 
 export default function Profile() {
   const { subject, refreshSubject } = useOutletContext();
+  const { user } = useAuth();
+  const { showToast, ToastContainer } = useToast();
   const [profile, setProfile] = useState(() => {
     const base = JSON.parse(JSON.stringify(EMPTY_PROFILE));
     if (subject?.profile_data && Object.keys(subject.profile_data).length > 0) {
@@ -283,9 +407,11 @@ export default function Profile() {
   const [dragOver, setDragOver] = useState(false);
   const [exposuresCollapsed, setExposuresCollapsed] = useState(false);
   const [showBatchEnrich, setShowBatchEnrich] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const saveTimeout = useRef(null);
   const latestProfile = useRef(profile);
   const fileInputRef = useRef(null);
+  const prevSyncData = useRef(null);
 
   // Reset all state when subject changes
   useEffect(() => {
@@ -355,10 +481,25 @@ export default function Profile() {
         } else {
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus("idle"), 2000);
+
+          // Check if network or professional fields changed — fire sync if so
+          const syncKey = JSON.stringify({
+            network: data.network,
+            professional: data.professional,
+            name: data.identity?.full_name,
+          });
+          if (prevSyncData.current !== syncKey) {
+            prevSyncData.current = syncKey;
+            if (user?.id) {
+              syncRelationships({ ...subject, profile_data: data }, user.id).then((result) => {
+                if (result.updated) showToast(result.details);
+              });
+            }
+          }
         }
       }, 1500);
     },
-    [subject?.id]
+    [subject?.id, user?.id, showToast]
   );
 
   function updateProfile(updater) {
@@ -545,11 +686,27 @@ export default function Profile() {
                   </button>
                 )}
                 <button
-                  onClick={() => runAllEnrichments(profile, updateProfile)}
+                  onClick={async () => {
+                    if (enriching) return;
+                    setEnriching(true);
+                    try {
+                      const result = await runAllEnrichments(profile, updateProfile);
+                      showToast(result.summary);
+                    } catch {
+                      showToast("Enrichment failed");
+                    } finally {
+                      setEnriching(false);
+                    }
+                  }}
+                  disabled={enriching}
                   className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer transition-all"
-                  style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#09BC8A" }}
+                  style={{ background: "transparent", border: "1px solid #2a2a2a", color: enriching ? "#555" : "#09BC8A" }}
                 >
-                  <Zap size={11} /> Run All
+                  {enriching ? (
+                    <><span className="generating-spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} /> Running...</>
+                  ) : (
+                    <><Zap size={11} /> Run All</>
+                  )}
                 </button>
               </div>
             </div>
@@ -705,6 +862,7 @@ export default function Profile() {
         {activeTab === "behavioral" && <BehavioralSection profile={profile} update={updateProfile} aiFields={aiFields} />}
         {activeTab === "notes" && <NotesSection profile={profile} update={updateProfile} />}
       </div>
+      <ToastContainer />
     </div>
   );
 }
@@ -2234,6 +2392,9 @@ function NetworkSection({ profile, update, aiFields }) {
         {(net.associates || []).map((assoc, i) => (
           <div key={i} className={`entry-card relative ${assoc._aiExtracted ? "ai-extracted" : ""}`}>
             <SourceTag source={assoc.source} />
+            {assoc.source === "auto-synced from linked subject" && (
+              <span className="sync-badge" style={{ position: "absolute", top: 8, right: assoc.source ? 140 : 8 }}>&#x21C4; Synced</span>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <FormField label="Name">
                 <input className="form-input" value={assoc.name || ""} onChange={(e) => setAssoc(i, "name", e.target.value)} />

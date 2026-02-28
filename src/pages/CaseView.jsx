@@ -3,10 +3,13 @@ import { useParams, Outlet, Navigate } from "react-router-dom";
 import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
+import { syncRelationships } from "../lib/relationshipSync";
+import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "../components/Sidebar";
 
 export default function CaseView() {
   const { caseId } = useParams();
+  const { user } = useAuth();
   const [caseData, setCaseData] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [activeSubject, setActiveSubject] = useState(null);
@@ -75,6 +78,10 @@ export default function CaseView() {
       setSubjects((prev) => [...prev, data]);
       setActiveSubject(data);
       setShowCreateSubject(false);
+      // Fire-and-forget: sync relationships for new subject
+      if (user?.id) {
+        syncRelationships(data, user.id);
+      }
     }
   }
 
