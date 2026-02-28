@@ -1,12 +1,12 @@
 import { NavLink, Link } from "react-router-dom";
-import { User, Radio, Shield, Activity, GitBranch, ArrowLeft } from "lucide-react";
+import { User, Radio, Shield, Activity, GitMerge, ArrowLeft } from "lucide-react";
 
 const modules = [
   { key: "profile", label: "Profile", icon: User, path: "profile" },
   { key: "recon", label: "Recon Mirror", icon: Radio, path: "recon" },
   { key: "aegis", label: "Aegis Score", icon: Shield, path: "aegis" },
   { key: "patterns", label: "Pattern Lens", icon: Activity, path: "patterns" },
-  { key: "crosswire", label: "CrossWire", icon: GitBranch, path: "crosswire" },
+  { key: "crosswire", label: "CrossWire", icon: GitMerge, path: "crosswire" },
 ];
 
 export default function Sidebar({ caseName, caseType }) {

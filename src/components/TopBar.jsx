@@ -29,7 +29,11 @@ export default function TopBar() {
       className="flex items-center justify-between px-6 shrink-0"
       style={{ background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", height: 56 }}
     >
-      <div className="flex items-center gap-3">
+      <button
+        onClick={() => navigate("/")}
+        className="flex items-center gap-3 cursor-pointer"
+        style={{ background: "transparent", border: "none", padding: 0 }}
+      >
         <img
           src="/sentract-logo.png"
           alt="Sentract"
@@ -38,7 +42,7 @@ export default function TopBar() {
         <span className="text-[18px] font-semibold text-white tracking-tight">
           Sentract
         </span>
-      </div>
+      </button>
 
       <div className="flex items-center gap-6">
         {/* User dropdown */}

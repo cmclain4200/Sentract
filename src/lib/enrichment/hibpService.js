@@ -14,17 +14,27 @@ async function rateLimitedCall(email) {
   lastRequestTime = Date.now();
 
   if (isDev) {
-    // In dev, use existing Supabase edge function
+    // In dev, call HIBP API directly with the client-side key
     const hibpKey = import.meta.env.VITE_HIBP_API_KEY;
-    const { data, error } = await supabase.functions.invoke('hibp-proxy', {
-      body: { email, hibp_api_key: hibpKey },
-    });
+    if (!hibpKey) return { error: 'no_api_key', message: 'HIBP API key not configured' };
 
-    if (error) {
-      return { error: 'network_error', message: error.message || 'Edge function call failed' };
-    }
+    const resp = await fetch(
+      `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`,
+      {
+        headers: {
+          'hibp-api-key': hibpKey,
+          'User-Agent': 'Sentract-Security-Platform',
+        },
+      }
+    );
 
-    return data;
+    if (resp.status === 404) return { found: false, breaches: [] };
+    if (resp.status === 429) return { error: 'rate_limited', message: 'Rate limited. Try again in a few seconds.' };
+    if (!resp.ok) return { error: 'network_error', message: `HIBP returned ${resp.status}` };
+
+    const breaches = await resp.json();
+    if (!Array.isArray(breaches) || breaches.length === 0) return { found: false, breaches: [] };
+    return { found: true, breaches };
   }
 
   // Production: use Vercel serverless proxy
@@ -40,7 +50,6 @@ async function rateLimitedCall(email) {
 
   const breaches = await response.json();
 
-  // The proxy returns raw HIBP data (array of breaches) or empty array
   if (!Array.isArray(breaches) || breaches.length === 0) {
     return { found: false, breaches: [] };
   }

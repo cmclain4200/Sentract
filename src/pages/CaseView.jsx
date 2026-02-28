@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
-import { Plus, User, FileDown } from "lucide-react";
+import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
 import Sidebar from "../components/Sidebar";
@@ -14,6 +14,9 @@ export default function CaseView() {
   const [error, setError] = useState(null);
   const [showCreateSubject, setShowCreateSubject] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showHiddenSubjects, setShowHiddenSubjects] = useState(false);
+  const [subjectMenu, setSubjectMenu] = useState(null);
+  const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -79,6 +82,36 @@ export default function CaseView() {
     fetchSubjects();
   }
 
+  async function hideSubject(id) {
+    await supabase.from("subjects").update({ hidden: true }).eq("id", id);
+    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, hidden: true } : s)));
+    if (activeSubject?.id === id) {
+      const next = subjects.find((s) => s.id !== id && !s.hidden);
+      setActiveSubject(next || null);
+    }
+    setSubjectMenu(null);
+  }
+
+  async function unhideSubject(id) {
+    await supabase.from("subjects").update({ hidden: false }).eq("id", id);
+    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, hidden: false } : s)));
+    setSubjectMenu(null);
+  }
+
+  async function deleteSubject(id) {
+    await supabase.from("subjects").delete().eq("id", id);
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    if (activeSubject?.id === id) {
+      const remaining = subjects.filter((s) => s.id !== id && !s.hidden);
+      setActiveSubject(remaining[0] || null);
+    }
+    setConfirmDeleteSubject(null);
+    setSubjectMenu(null);
+  }
+
+  const visibleSubjects = showHiddenSubjects ? subjects : subjects.filter((s) => !s.hidden);
+  const hiddenSubjectCount = subjects.filter((s) => s.hidden).length;
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -102,26 +135,72 @@ export default function CaseView() {
         {/* Subject selector bar */}
         {subjects.length > 0 && (
           <div
-            className="flex items-center gap-3 px-6 shrink-0"
+            className="flex items-center gap-3 px-6 shrink-0 flex-wrap"
             style={{ borderBottom: "1px solid #1a1a1a", background: "#0a0a0a", minHeight: 48, padding: "8px 24px" }}
           >
             <span className="sub-label mr-1" style={{ color: "#444" }}>Subject</span>
-            {subjects.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveSubject(s)}
-                className="flex items-center gap-2 rounded text-[13px] cursor-pointer transition-all"
-                style={{
-                  background: activeSubject?.id === s.id ? "#1a1a1a" : "transparent",
-                  border: `1px solid ${activeSubject?.id === s.id ? "#333" : "#1e1e1e"}`,
-                  color: activeSubject?.id === s.id ? "#fff" : "#888",
-                  padding: "6px 14px",
-                  minHeight: 34,
-                }}
-              >
-                <User size={13} />
-                {s.name}
-              </button>
+            {visibleSubjects.map((s) => (
+              <div key={s.id} className="relative flex items-center">
+                <button
+                  onClick={() => setActiveSubject(s)}
+                  className="flex items-center gap-2 rounded-l text-[13px] cursor-pointer transition-all"
+                  style={{
+                    background: activeSubject?.id === s.id ? "#1a1a1a" : "transparent",
+                    border: `1px solid ${activeSubject?.id === s.id ? "#333" : "#1e1e1e"}`,
+                    borderRight: "none",
+                    color: activeSubject?.id === s.id ? "#fff" : "#888",
+                    opacity: s.hidden ? 0.5 : 1,
+                    padding: "6px 10px 6px 14px",
+                    minHeight: 34,
+                  }}
+                >
+                  <User size={13} />
+                  {s.name}
+                  {s.hidden && <span className="text-[9px] font-mono ml-1" style={{ color: "#555" }}>HIDDEN</span>}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSubjectMenu(subjectMenu === s.id ? null : s.id); }}
+                  className="flex items-center justify-center rounded-r text-[13px] cursor-pointer transition-all"
+                  style={{
+                    background: activeSubject?.id === s.id ? "#1a1a1a" : "transparent",
+                    border: `1px solid ${activeSubject?.id === s.id ? "#333" : "#1e1e1e"}`,
+                    borderLeft: `1px solid ${activeSubject?.id === s.id ? "#333" : "#1e1e1e"}`,
+                    padding: "6px 6px",
+                    minHeight: 34,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#222")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = activeSubject?.id === s.id ? "#1a1a1a" : "transparent")}
+                >
+                  <MoreVertical size={12} color="#555" />
+                </button>
+                {subjectMenu === s.id && (
+                  <div
+                    className="absolute left-0 top-full mt-1 w-[170px] rounded-md overflow-hidden z-50 fade-in"
+                    style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+                  >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); s.hidden ? unhideSubject(s.id) : hideSubject(s.id); }}
+                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      {s.hidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                      <span className="text-[13px]">{s.hidden ? "Unhide" : "Hide"}</span>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteSubject(s); setSubjectMenu(null); }}
+                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#ef4444" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <Trash2 size={13} />
+                      <span className="text-[13px]">Delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
             <button
               onClick={() => setShowCreateSubject(true)}
@@ -138,6 +217,16 @@ export default function CaseView() {
             >
               <Plus size={13} /> Add
             </button>
+            {hiddenSubjectCount > 0 && (
+              <button
+                onClick={() => setShowHiddenSubjects(!showHiddenSubjects)}
+                className="flex items-center gap-1.5 text-[11px] font-mono cursor-pointer transition-colors"
+                style={{ background: "transparent", border: "none", color: showHiddenSubjects ? "#09BC8A" : "#444" }}
+              >
+                {showHiddenSubjects ? <EyeOff size={11} /> : <Eye size={11} />}
+                {hiddenSubjectCount} hidden
+              </button>
+            )}
             {activeSubject && (
               <button
                 onClick={async () => {
@@ -180,6 +269,55 @@ export default function CaseView() {
           <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject }} />
         </div>
       </div>
+
+      {/* Close subject menu on outside click */}
+      {subjectMenu && (
+        <div className="fixed inset-0 z-40" onClick={() => setSubjectMenu(null)} />
+      )}
+
+      {/* Delete subject confirmation */}
+      {confirmDeleteSubject && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setConfirmDeleteSubject(null)}
+        >
+          <div
+            className="surface w-full fade-in"
+            style={{ maxWidth: 420, padding: "28px 32px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: "rgba(239,68,68,0.1)" }}>
+                <AlertTriangle size={20} color="#ef4444" />
+              </div>
+              <div>
+                <h3 className="text-white text-[18px] font-semibold">Delete Subject</h3>
+                <p className="text-[13px] mt-0.5" style={{ color: "#666" }}>This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-[14px] mb-6" style={{ color: "#888" }}>
+              Permanently delete <span className="text-white font-semibold">{confirmDeleteSubject.name}</span> and all associated profile data, assessments, and uploads? This data cannot be recovered.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => deleteSubject(confirmDeleteSubject.id)}
+                className="flex-1 rounded text-[14px] font-semibold cursor-pointer"
+                style={{ background: "#ef4444", color: "#fff", border: "none", padding: "12px 24px", minHeight: 44 }}
+              >
+                Delete Permanently
+              </button>
+              <button
+                onClick={() => setConfirmDeleteSubject(null)}
+                className="rounded text-[14px] cursor-pointer"
+                style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "10px 20px", minHeight: 44 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Subject Modal */}
       {showCreateSubject && (

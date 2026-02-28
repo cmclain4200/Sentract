@@ -95,13 +95,17 @@ export function buildRemediationOptions(profileData) {
   if (!profileData) return [];
   const options = [];
 
+  // ── Digital & Data Cleanup ──
+
   const activeBrokers = profileData.digital?.data_broker_listings?.filter((b) => b.status === 'active') || [];
   if (activeBrokers.length > 0) {
     options.push({
       id: 'remove_brokers',
       label: `Remove ${activeBrokers.length} active data broker listings`,
+      description: `${activeBrokers.length} broker${activeBrokers.length > 1 ? 's' : ''} currently exposing PII. Removal requests typically take 2-4 weeks.`,
       scoreReduction: activeBrokers.length * 3,
       affectedFactor: 'digital_footprint',
+      category: 'digital',
       enabled: false,
     });
   }
@@ -110,20 +114,11 @@ export function buildRemediationOptions(profileData) {
   if (publicAccounts.length > 0) {
     options.push({
       id: 'privatize_social',
-      label: `Set ${publicAccounts.length} social accounts to private`,
+      label: `Privatize ${publicAccounts.length} social media accounts`,
+      description: `Set ${publicAccounts.map((a) => a.platform).filter(Boolean).join(', ') || 'accounts'} to private to reduce digital footprint.`,
       scoreReduction: publicAccounts.length * 4,
       affectedFactor: 'digital_footprint',
-      enabled: false,
-    });
-  }
-
-  const hasStrava = profileData.digital?.social_accounts?.some((a) => a.platform?.toLowerCase().includes('strava'));
-  if (hasStrava) {
-    options.push({
-      id: 'disable_strava',
-      label: 'Disable Strava public GPS tracking',
-      scoreReduction: 12,
-      affectedFactor: 'behavioral_predictability',
+      category: 'digital',
       enabled: false,
     });
   }
@@ -133,8 +128,10 @@ export function buildRemediationOptions(profileData) {
     options.push({
       id: 'rotate_credentials',
       label: `Rotate credentials for ${breachCount} breached accounts`,
+      description: 'Change passwords and enable 2FA on all breached accounts.',
       scoreReduction: Math.min(breachCount * 4, 20),
       affectedFactor: 'breach_exposure',
+      category: 'digital',
       enabled: false,
     });
   }
@@ -144,22 +141,138 @@ export function buildRemediationOptions(profileData) {
     options.push({
       id: 'privatize_venmo',
       label: 'Set Venmo transactions to private',
+      description: 'Public Venmo feeds reveal financial associations and location patterns.',
       scoreReduction: 5,
       affectedFactor: 'digital_footprint',
+      category: 'digital',
       enabled: false,
     });
   }
 
-  const confirmedAddr = profileData.locations?.addresses?.filter((a) => a.confidence === 'confirmed')?.length || 0;
-  if (confirmedAddr > 0) {
+  // ── Behavioral Changes ──
+
+  const routines = profileData.behavioral?.routines || [];
+  const highConsistencyRoutines = routines.filter((r) => {
+    const c = r.consistency != null ? (r.consistency > 1 ? r.consistency : r.consistency * 100) : 0;
+    return c > 60;
+  });
+
+  highConsistencyRoutines.forEach((routine, i) => {
+    const consistency = routine.consistency > 1 ? routine.consistency : Math.round(routine.consistency * 100);
+    const loc = routine.location || routine.name || 'routine';
+    const schedule = routine.schedule || routine.name || '';
     options.push({
-      id: 'address_privacy',
-      label: 'Register addresses with privacy services',
-      scoreReduction: confirmedAddr * 3,
-      affectedFactor: 'physical_opsec',
+      id: `randomize_routine_${i}`,
+      label: `Randomize schedule: ${schedule} ${loc}`.trim(),
+      description: `Current consistency: ${consistency}%. Varying this routine by ±30-60 minutes on random days reduces predictability.`,
+      scoreReduction: Math.round(consistency * 0.08),
+      affectedFactor: 'behavioral_predictability',
+      category: 'behavioral',
+      enabled: false,
+    });
+  });
+
+  if (routines.length > 0) {
+    const addressCount = profileData.locations?.addresses?.length || 0;
+    const routineCount = routines.length;
+    options.push({
+      id: 'vary_commute',
+      label: 'Vary commute routes (rotate 2-3 alternatives)',
+      description: `${addressCount} known address${addressCount !== 1 ? 'es' : ''} and ${routineCount} routine${routineCount !== 1 ? 's' : ''} create predictable transit patterns.`,
+      scoreReduction: Math.max(2, Math.min(addressCount + routineCount, 8)),
+      affectedFactor: 'behavioral_predictability',
+      category: 'behavioral',
       enabled: false,
     });
   }
+
+  // GPS broadcasting (Strava, fitness trackers)
+  const gpsAccounts = profileData.digital?.social_accounts?.filter((a) => {
+    const p = (a.platform || '').toLowerCase();
+    const n = (a.notes || '').toLowerCase();
+    return p.includes('strava') || p.includes('garmin') || p.includes('fitbit') || p.includes('alltrails') ||
+      n.includes('gps') || n.includes('fitness') || n.includes('tracking');
+  }) || [];
+  if (gpsAccounts.length > 0) {
+    options.push({
+      id: 'disable_gps',
+      label: `Eliminate GPS-broadcasting activities (${gpsAccounts.map((a) => a.platform).filter(Boolean).join(', ') || 'fitness trackers'})`,
+      description: 'Public GPS data reveals routes, timing patterns, and frequently visited locations.',
+      scoreReduction: gpsAccounts.length > 1 ? 10 : 6,
+      affectedFactor: 'behavioral_predictability',
+      category: 'behavioral',
+      enabled: false,
+    });
+  }
+
+  // ── Physical Security ──
+
+  const addresses = profileData.locations?.addresses || [];
+  addresses.forEach((addr, i) => {
+    const locLabel = [addr.city, addr.state].filter(Boolean).join(', ') || `Address ${i + 1}`;
+    const typeLabel = addr.type || 'address';
+    options.push({
+      id: `enhance_security_${i}`,
+      label: `Enhance security at ${typeLabel}: ${locLabel}`,
+      description: 'Install monitoring, vary entry/exit patterns, assess sight lines from adjacent structures.',
+      scoreReduction: addr.type === 'primary' ? 6 : 3,
+      affectedFactor: 'physical_opsec',
+      category: 'physical',
+      enabled: false,
+    });
+  });
+
+  if (addresses.length > 1) {
+    options.push({
+      id: 'reduce_addresses',
+      label: 'Reduce confirmed address count (PO box, registered agent)',
+      description: `${addresses.length} confirmed addresses in public records. Use PO boxes and registered agents to reduce publicly linked locations.`,
+      scoreReduction: Math.min(addresses.length * 2, 8),
+      affectedFactor: 'physical_opsec',
+      category: 'physical',
+      enabled: false,
+    });
+  }
+
+  const properties = profileData.public_records?.properties || [];
+  if (properties.length > 0) {
+    options.push({
+      id: 'property_trust',
+      label: `Transfer ${properties.length} propert${properties.length > 1 ? 'ies' : 'y'} to trust or LLC`,
+      description: 'Properties held in personal name are discoverable via public records. Transferring to a trust removes the direct name link.',
+      scoreReduction: properties.length * 3,
+      affectedFactor: 'physical_opsec',
+      category: 'physical',
+      enabled: false,
+    });
+  }
+
+  // ── Network & Family ──
+
+  const familyMembers = profileData.network?.family_members || [];
+  const familyWithPublicSocial = familyMembers.filter((f) => {
+    if (f.social_media?.some?.((s) => s.visibility === 'public' || s.url)) return true;
+    if (f.notes?.toLowerCase().includes('public')) return true;
+    return false;
+  });
+
+  if (familyWithPublicSocial.length > 0) {
+    options.push({
+      id: 'family_opsec',
+      label: `Family OPSEC: ${familyWithPublicSocial.length} family member${familyWithPublicSocial.length > 1 ? 's' : ''} with public social media`,
+      description: 'Family members with public social accounts can inadvertently reveal locations, schedules, and associations. Recommend privacy settings review.',
+      scoreReduction: familyWithPublicSocial.length * 2,
+      affectedFactor: 'network_exposure',
+      category: 'network',
+      enabled: false,
+    });
+  }
+
+  // Sort within each category by scoreReduction descending
+  options.sort((a, b) => {
+    if (a.category !== b.category) return 0; // preserve category ordering
+    return b.scoreReduction - a.scoreReduction;
+  });
 
   return options;
 }

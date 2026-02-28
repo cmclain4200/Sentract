@@ -270,17 +270,11 @@ export default function AegisScore() {
             </button>
 
             {showRemediation && (
-              <div className="mt-4 space-y-2 fade-in">
-                {activeRemediations.map((r) => (
-                  <label key={r.id} className="flex items-center gap-4 px-4 py-3 rounded-md cursor-pointer transition-all duration-200"
-                    style={{ background: r.enabled ? "#1a1a1a" : "transparent" }}>
-                    <input type="checkbox" checked={r.enabled} onChange={() => toggleRemediation(r.id)} className="accent-[#09BC8A] w-4 h-4" />
-                    <span className="text-[14px] flex-1" style={{ color: "#e0e0e0" }}>{r.label}</span>
-                    <span className="text-[13px] font-mono" style={{ color: "#09BC8A" }}>
-                      -{r.scoreReduction} points
-                    </span>
-                  </label>
-                ))}
+              <div className="mt-4 fade-in">
+                <RemediationGroups
+                  remediations={activeRemediations}
+                  onToggle={toggleRemediation}
+                />
                 {delta > 0 && (
                   <div className="mt-4 pt-4 flex items-center gap-4" style={{ borderTop: "1px solid #1e1e1e" }}>
                     <span className="text-[14px]" style={{ color: "#888" }}>Projected score:</span>
@@ -499,6 +493,67 @@ function AegisRadarChart({ displayScore, previousScore }) {
           )}
         </RadarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+const CATEGORY_LABELS = {
+  digital: 'Digital & Data Cleanup',
+  behavioral: 'Behavioral Changes',
+  physical: 'Physical Security',
+  network: 'Network & Family',
+};
+
+const CATEGORY_ORDER = ['digital', 'behavioral', 'physical', 'network'];
+
+function RemediationGroups({ remediations, onToggle }) {
+  const grouped = {};
+  remediations.forEach((r) => {
+    const cat = r.category || 'digital';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(r);
+  });
+
+  // Sort within each group by scoreReduction descending
+  Object.values(grouped).forEach((arr) => arr.sort((a, b) => b.scoreReduction - a.scoreReduction));
+
+  return (
+    <div className="space-y-5">
+      {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length > 0).map((cat) => (
+        <div key={cat}>
+          <div
+            className="text-[10px] font-semibold tracking-widest uppercase mb-2"
+            style={{ color: "#555", letterSpacing: "0.08em" }}
+          >
+            {CATEGORY_LABELS[cat]}
+          </div>
+          <div className="space-y-1">
+            {grouped[cat].map((r) => (
+              <label
+                key={r.id}
+                className="flex items-start gap-4 px-4 py-3 rounded-md cursor-pointer transition-all duration-200"
+                style={{ background: r.enabled ? "#1a1a1a" : "transparent" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={r.enabled}
+                  onChange={() => onToggle(r.id)}
+                  className="accent-[#09BC8A] w-4 h-4 mt-0.5 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[14px] block" style={{ color: "#e0e0e0" }}>{r.label}</span>
+                  {r.description && (
+                    <span className="text-[12px] block mt-0.5" style={{ color: "#555" }}>{r.description}</span>
+                  )}
+                </div>
+                <span className="text-[13px] font-mono shrink-0" style={{ color: "#09BC8A" }}>
+                  -{r.scoreReduction} pts
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

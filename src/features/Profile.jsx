@@ -284,6 +284,7 @@ export default function Profile() {
   const [exposuresCollapsed, setExposuresCollapsed] = useState(false);
   const [showBatchEnrich, setShowBatchEnrich] = useState(false);
   const saveTimeout = useRef(null);
+  const latestProfile = useRef(profile);
   const fileInputRef = useRef(null);
 
   // Reset all state when subject changes
@@ -306,6 +307,31 @@ export default function Profile() {
 
   const completeness = calculateCompleteness(profile);
   const exposures = useMemo(() => generateKeyExposures(profile), [profile]);
+
+  // Keep ref in sync so beforeunload can access latest data
+  useEffect(() => { latestProfile.current = profile; }, [profile]);
+
+  // Flush pending save on page unload or component unmount
+  useEffect(() => {
+    const flushSave = () => {
+      if (saveTimeout.current && subject?.id) {
+        clearTimeout(saveTimeout.current);
+        saveTimeout.current = null;
+        const comp = calculateCompleteness(latestProfile.current);
+        supabase
+          .from("subjects")
+          .update({ profile_data: latestProfile.current, data_completeness: comp.score })
+          .eq("id", subject.id)
+          .then(() => {});
+      }
+    };
+    const handleBeforeUnload = () => flushSave();
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      flushSave();
+    };
+  }, [subject?.id]);
 
   const emailCount = (profile.contact?.email_addresses || []).filter((e) => e.address).length;
 

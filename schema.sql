@@ -90,6 +90,8 @@ create table if not exists public.subjects (
   role text,
   organization text,
   profile_data jsonb default '{}'::jsonb,
+  data_completeness numeric default 0,
+  hidden boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

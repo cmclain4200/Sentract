@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3 } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import SectionHeader from "../components/common/SectionHeader";
 
@@ -15,6 +15,9 @@ export default function Dashboard() {
   const [aegisScores, setAegisScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [caseMenu, setCaseMenu] = useState(null); // case id with open menu
+  const [confirmDelete, setConfirmDelete] = useState(null); // case object to confirm delete
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,17 +55,40 @@ export default function Dashboard() {
     setLoading(false);
   }
 
+  async function hideCase(id) {
+    await supabase.from("cases").update({ status: "archived" }).eq("id", id);
+    setCases((prev) => prev.map((c) => (c.id === id ? { ...c, status: "archived" } : c)));
+    setCaseMenu(null);
+  }
+
+  async function unhideCase(id) {
+    await supabase.from("cases").update({ status: "active" }).eq("id", id);
+    setCases((prev) => prev.map((c) => (c.id === id ? { ...c, status: "active" } : c)));
+    setCaseMenu(null);
+  }
+
+  async function deleteCase(id) {
+    await supabase.from("cases").delete().eq("id", id);
+    setCases((prev) => prev.filter((c) => c.id !== id));
+    setConfirmDelete(null);
+    setCaseMenu(null);
+  }
+
   function typeColor(type) {
     return CASE_TYPES.find((t) => t.value === type)?.color || "#888";
   }
 
+  const hiddenCount = cases.filter((c) => c.status === "archived").length;
+  const visibleCases = showHidden ? cases : cases.filter((c) => c.status !== "archived");
+
   const stats = useMemo(() => {
-    if (!cases.length) return null;
-    const totalCases = cases.length;
+    const activeCases = cases.filter((c) => c.status !== "archived");
+    if (!activeCases.length) return null;
+    const totalCases = activeCases.length;
     let totalSubjects = 0;
     let completenessSum = 0;
     let completenessCount = 0;
-    for (const c of cases) {
+    for (const c of activeCases) {
       const subs = c.subjects || [];
       totalSubjects += subs.length;
       for (const s of subs) {
@@ -98,7 +124,7 @@ export default function Dashboard() {
             <span className="pulse-dot" />
             <span className="pulse-dot" />
           </div>
-        ) : cases.length === 0 ? (
+        ) : visibleCases.length === 0 && hiddenCount === 0 ? (
           <div className="surface text-center" style={{ padding: "48px 32px" }}>
             <Briefcase size={44} color="#333" className="mx-auto mb-4" />
             <div className="text-[20px] text-white font-semibold mb-3">No cases yet</div>
@@ -135,12 +161,39 @@ export default function Dashboard() {
                   <span className="text-[15px] font-semibold text-white">{stats.avgCompleteness}%</span>
                   <span className="text-[12px] font-mono" style={{ color: "#555" }}>Avg Completeness</span>
                 </div>
+                {hiddenCount > 0 && (
+                  <>
+                    <span style={{ color: "#2a2a2a" }}>·</span>
+                    <button
+                      onClick={() => setShowHidden(!showHidden)}
+                      className="flex items-center gap-1.5 text-[12px] font-mono cursor-pointer transition-colors"
+                      style={{ background: "transparent", border: "none", color: showHidden ? "#09BC8A" : "#444" }}
+                    >
+                      {showHidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                      {hiddenCount} hidden
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {visibleCases.length === 0 && hiddenCount > 0 && (
+              <div className="surface text-center" style={{ padding: "32px" }}>
+                <EyeOff size={32} color="#333" className="mx-auto mb-3" />
+                <div className="text-[15px] mb-3" style={{ color: "#555" }}>All cases are hidden.</div>
+                <button
+                  onClick={() => setShowHidden(true)}
+                  className="text-[13px] cursor-pointer"
+                  style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "8px 16px", borderRadius: 6 }}
+                >
+                  Show hidden cases
+                </button>
               </div>
             )}
 
             {/* Case Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {cases.map((c) => {
+              {visibleCases.map((c) => {
                 const subs = c.subjects || [];
                 const subCount = subs.length;
                 const avgComp = subCount > 0
@@ -154,41 +207,99 @@ export default function Dashboard() {
                   if (score != null && (bestAegis == null || score > bestAegis)) bestAegis = score;
                 }
 
+                const isHidden = c.status === "archived";
+
                 return (
-                  <button
+                  <div
                     key={c.id}
-                    onClick={() => navigate(`/case/${c.id}/profile`)}
-                    className="surface text-left cursor-pointer transition-all duration-200 flex flex-col"
-                    style={{ background: "#111", border: "1px solid #1e1e1e", padding: "20px 22px", minHeight: 160 }}
+                    className="surface text-left transition-all duration-200 flex flex-col relative"
+                    style={{
+                      background: "#111",
+                      border: `1px solid ${isHidden ? "#1a1a1a" : "#1e1e1e"}`,
+                      padding: "20px 22px",
+                      minHeight: 160,
+                      opacity: isHidden ? 0.5 : 1,
+                    }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = isHidden ? "#1a1a1a" : "#1e1e1e")}
                   >
-                    {/* Top row: type badge + aegis score */}
+                    {/* Clickable area */}
+                    <button
+                      onClick={() => navigate(`/case/${c.id}/profile`)}
+                      className="absolute inset-0 cursor-pointer"
+                      style={{ background: "transparent", border: "none" }}
+                    />
+                    {/* Top row: type badge + aegis score + menu */}
                     <div className="flex items-center justify-between mb-3">
-                      <span
-                        className="badge"
-                        style={{
-                          color: typeColor(c.type),
-                          background: `${typeColor(c.type)}18`,
-                          border: `1px solid ${typeColor(c.type)}35`,
-                          fontSize: 11,
-                          padding: "3px 8px",
-                        }}
-                      >
-                        {c.type}
-                      </span>
-                      {bestAegis != null && (
+                      <div className="flex items-center gap-2">
                         <span
-                          className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                          className="badge"
                           style={{
-                            color: bestAegis >= 75 ? "#ef4444" : bestAegis >= 55 ? "#f59e0b" : bestAegis >= 35 ? "#3b82f6" : "#09BC8A",
-                            background: bestAegis >= 75 ? "rgba(239,68,68,0.1)" : bestAegis >= 55 ? "rgba(245,158,11,0.1)" : bestAegis >= 35 ? "rgba(59,130,246,0.1)" : "rgba(9,188,138,0.1)",
-                            border: `1px solid ${bestAegis >= 75 ? "rgba(239,68,68,0.2)" : bestAegis >= 55 ? "rgba(245,158,11,0.2)" : bestAegis >= 35 ? "rgba(59,130,246,0.2)" : "rgba(9,188,138,0.2)"}`,
+                            color: typeColor(c.type),
+                            background: `${typeColor(c.type)}18`,
+                            border: `1px solid ${typeColor(c.type)}35`,
+                            fontSize: 11,
+                            padding: "3px 8px",
                           }}
                         >
-                          {bestAegis}
+                          {c.type}
                         </span>
-                      )}
+                        {isHidden && (
+                          <span className="text-[10px] font-mono" style={{ color: "#555" }}>HIDDEN</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {bestAegis != null && (
+                          <span
+                            className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                            style={{
+                              color: bestAegis >= 75 ? "#ef4444" : bestAegis >= 55 ? "#f59e0b" : bestAegis >= 35 ? "#3b82f6" : "#09BC8A",
+                              background: bestAegis >= 75 ? "rgba(239,68,68,0.1)" : bestAegis >= 55 ? "rgba(245,158,11,0.1)" : bestAegis >= 35 ? "rgba(59,130,246,0.1)" : "rgba(9,188,138,0.1)",
+                              border: `1px solid ${bestAegis >= 75 ? "rgba(239,68,68,0.2)" : bestAegis >= 55 ? "rgba(245,158,11,0.2)" : bestAegis >= 35 ? "rgba(59,130,246,0.2)" : "rgba(9,188,138,0.2)"}`,
+                            }}
+                          >
+                            {bestAegis}
+                          </span>
+                        )}
+                        <div className="relative z-10">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCaseMenu(caseMenu === c.id ? null : c.id); }}
+                            className="flex items-center justify-center rounded cursor-pointer transition-colors"
+                            style={{ background: "transparent", border: "none", width: 28, height: 28 }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <MoreVertical size={14} color="#555" />
+                          </button>
+                          {caseMenu === c.id && (
+                            <div
+                              className="absolute right-0 top-full mt-1 w-[180px] rounded-md overflow-hidden z-50 fade-in"
+                              style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+                            >
+                              <button
+                                onClick={(e) => { e.stopPropagation(); isHidden ? unhideCase(c.id) : hideCase(c.id); }}
+                                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                                style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#888" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                {isHidden ? <Eye size={14} /> : <EyeOff size={14} />}
+                                <span className="text-[13px]">{isHidden ? "Unhide" : "Hide"}</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(c); setCaseMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                                style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#ef4444" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                <Trash2 size={14} />
+                                <span className="text-[13px]">Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Title */}
@@ -233,13 +344,62 @@ export default function Dashboard() {
                         {new Date(c.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </>
         )}
       </div>
+
+      {/* Close case menu on outside click */}
+      {caseMenu && (
+        <div className="fixed inset-0 z-40" onClick={() => setCaseMenu(null)} />
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setConfirmDelete(null)}
+        >
+          <div
+            className="surface w-full fade-in"
+            style={{ maxWidth: 420, padding: "28px 32px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: "rgba(239,68,68,0.1)" }}>
+                <AlertTriangle size={20} color="#ef4444" />
+              </div>
+              <div>
+                <h3 className="text-white text-[18px] font-semibold">Delete Case</h3>
+                <p className="text-[13px] mt-0.5" style={{ color: "#666" }}>This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-[14px] mb-6" style={{ color: "#888" }}>
+              Permanently delete <span className="text-white font-semibold">{confirmDelete.name}</span> and all associated subjects, assessments, and uploads? This data cannot be recovered.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => deleteCase(confirmDelete.id)}
+                className="flex-1 rounded text-[14px] font-semibold cursor-pointer"
+                style={{ background: "#ef4444", color: "#fff", border: "none", padding: "12px 24px", minHeight: 44 }}
+              >
+                Delete Permanently
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="rounded text-[14px] cursor-pointer"
+                style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "10px 20px", minHeight: 44 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <CreateCaseModal
