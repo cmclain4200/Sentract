@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin } from "lucide-react";
+import { deduplicateKeyLocations } from "../lib/geocode";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -292,11 +293,12 @@ export default function TacticalMap({ scenarioData, activePhase, onLocationClick
       } catch {}
     });
 
-    // Create markers with staggered entrance
+    // Create markers with staggered entrance (deduplicate nearby coords)
+    const dedupedLocations = deduplicateKeyLocations(scenarioData.key_locations);
     const phase = scenarioData.phases[0];
     const activeIds = new Set(phase?.active_locations || []);
 
-    scenarioData.key_locations.forEach((loc, idx) => {
+    dedupedLocations.forEach((loc, idx) => {
       const isActive = activeIds.has(loc.id);
       const el = createMarkerEl(loc, isActive);
       el.style.opacity = "0";
@@ -433,9 +435,10 @@ export default function TacticalMap({ scenarioData, activePhase, onLocationClick
       } catch {}
     });
 
-    // Build location map for routes
+    // Build location map for routes (using deduped coordinates)
+    const dedupedLocs = deduplicateKeyLocations(sd.key_locations);
     const locMap = {};
-    sd.key_locations.forEach((l) => { locMap[l.id] = l.coordinates; });
+    dedupedLocs.forEach((l) => { locMap[l.id] = l.coordinates; });
 
     // Draw routes
     (phase.routes || []).forEach((route, i) => {

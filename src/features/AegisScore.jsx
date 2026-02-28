@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ChevronRight, ChevronDown, TrendingDown, TrendingUp, Save, Clock, Trash2, Minus, BarChart3 } from "lucide-react";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { calculateAegisScore, buildRemediationOptions, simulateRemediation } from "../lib/aegisScore";
@@ -138,63 +139,65 @@ export default function AegisScore() {
     <ModuleWrapper label="Risk Quantification" title="Aegis Score" profileData={profileData} minCompleteness={15} completeness={completeness.score}>
       <div className="flex-1 overflow-y-auto">
         <div className="flex gap-5 mb-6">
-          {/* Score Gauge */}
-          <div className="w-[260px] min-w-[260px] surface p-6 flex flex-col items-center justify-center">
-            <div className="relative w-44 h-44 mb-5">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="#1a1a1a" strokeWidth="5" />
-                <circle cx="50" cy="50" r="45" fill="none" stroke={tier.color} strokeWidth="5"
-                  strokeDasharray={circumference} strokeDashoffset={circumference - progress}
-                  strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s ease" }} />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[48px] font-bold" style={{ color: tier.color, lineHeight: 1, transition: "color 0.3s ease" }}>
-                  {displayScore.composite}
-                </span>
-                <span className="text-[13px] mt-1" style={{ color: "#666" }}>/100</span>
+          {/* Left: Score + Radar Chart */}
+          <div className="surface p-6 flex flex-col items-center" style={{ minWidth: 360 }}>
+            {/* Compact score display */}
+            <div className="flex items-center gap-4 mb-2 w-full">
+              <div className="relative w-20 h-20 shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="#1a1a1a" strokeWidth="6" />
+                  <circle cx="50" cy="50" r="45" fill="none" stroke={tier.color} strokeWidth="6"
+                    strokeDasharray={circumference} strokeDashoffset={circumference - progress}
+                    strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s ease" }} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[24px] font-bold" style={{ color: tier.color, lineHeight: 1, transition: "color 0.3s ease" }}>
+                    {displayScore.composite}
+                  </span>
+                </div>
               </div>
-            </div>
-            <span className="text-[13px] font-semibold tracking-wide text-center" style={{ color: tier.color, transition: "color 0.3s ease" }}>
-              {displayScore.riskLevel}
-            </span>
-            {trendDelta != null && trendDelta !== 0 && (
-              <div className="flex items-center gap-1.5 mt-2">
-                {trendDelta > 0 ? (
-                  <>
-                    <TrendingUp size={12} color="#ef4444" />
-                    <span className="text-[11px] font-mono" style={{ color: "#ef4444" }}>+{trendDelta} from last</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown size={12} color="#09BC8A" />
-                    <span className="text-[11px] font-mono" style={{ color: "#09BC8A" }}>{trendDelta} from last</span>
-                  </>
+              <div className="flex flex-col">
+                <span className="text-[13px] font-semibold tracking-wide" style={{ color: tier.color, transition: "color 0.3s ease" }}>
+                  {displayScore.riskLevel}
+                </span>
+                {trendDelta != null && trendDelta !== 0 && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {trendDelta > 0 ? (
+                      <><TrendingUp size={11} color="#ef4444" /><span className="text-[11px] font-mono" style={{ color: "#ef4444" }}>+{trendDelta} from last</span></>
+                    ) : (
+                      <><TrendingDown size={11} color="#09BC8A" /><span className="text-[11px] font-mono" style={{ color: "#09BC8A" }}>{trendDelta} from last</span></>
+                    )}
+                  </div>
+                )}
+                {trendDelta != null && trendDelta === 0 && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Minus size={11} color="#555" />
+                    <span className="text-[11px] font-mono" style={{ color: "#555" }}>No change</span>
+                  </div>
+                )}
+                {delta > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <TrendingDown size={11} color="#09BC8A" />
+                    <span className="text-[11px]" style={{ color: "#09BC8A" }}>{delta} pts reduced</span>
+                  </div>
                 )}
               </div>
-            )}
-            {trendDelta != null && trendDelta === 0 && (
-              <div className="flex items-center gap-1.5 mt-2">
-                <Minus size={12} color="#555" />
-                <span className="text-[11px] font-mono" style={{ color: "#555" }}>No change</span>
-              </div>
-            )}
-            {delta > 0 && (
-              <div className="flex items-center gap-2 mt-4 px-3 py-1.5 rounded" style={{ background: "rgba(9, 188, 138,0.08)" }}>
-                <TrendingDown size={13} color="#09BC8A" />
-                <span className="text-[12px]" style={{ color: "#09BC8A" }}>{delta} points reduced</span>
-              </div>
-            )}
+            </div>
+
+            {/* Radar Chart */}
+            <AegisRadarChart displayScore={displayScore} previousScore={savedScores[0]?.score_data || null} />
+
             <button
               onClick={saveScore}
               disabled={saving}
-              className="mt-4 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
+              className="mt-3 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
               style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#888" }}
             >
               <Save size={11} />{saving ? "Saving..." : "Save Snapshot"}
             </button>
           </div>
 
-          {/* Factor Bars */}
+          {/* Right: Factor Bars */}
           <div className="flex-1 surface p-6">
             <div className="section-label text-[10px] mb-5">Factor Scores</div>
             <div className="space-y-5">
@@ -398,6 +401,105 @@ export default function AegisScore() {
         )}
       </div>
     </ModuleWrapper>
+  );
+}
+
+const RADAR_SHORT_LABELS = {
+  digital_footprint: "Digital",
+  breach_exposure: "Breach",
+  behavioral_predictability: "Behavioral",
+  physical_opsec: "Physical",
+  network_exposure: "Network",
+};
+
+function AegisRadarChart({ displayScore, previousScore }) {
+  const radarData = Object.entries(displayScore.factors).map(([key, factor]) => {
+    const entry = {
+      factor: RADAR_SHORT_LABELS[key] || factor.label,
+      value: factor.score,
+      fullMark: 100,
+    };
+    // Overlay previous score if available and different
+    if (previousScore?.factors?.[key] != null) {
+      const prevVal = previousScore.factors[key].score;
+      if (prevVal !== factor.score) {
+        entry.previous = prevVal;
+      }
+    }
+    return entry;
+  });
+
+  const hasPrevious = radarData.some((d) => d.previous != null);
+
+  return (
+    <div style={{ width: 330, height: 280 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={radarData} outerRadius="75%">
+          <PolarGrid stroke="rgba(255,255,255,0.06)" />
+          <PolarAngleAxis
+            dataKey="factor"
+            tick={{ fill: "#888", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
+          />
+          <PolarRadiusAxis
+            angle={90}
+            domain={[0, 100]}
+            tick={false}
+            axisLine={false}
+          />
+          {hasPrevious && (
+            <Radar
+              name="Previous"
+              dataKey="previous"
+              stroke="rgba(255,255,255,0.2)"
+              fill="rgba(255,255,255,0.05)"
+              fillOpacity={1}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              dot={false}
+            />
+          )}
+          <Radar
+            name="Current"
+            dataKey="value"
+            stroke="#00d4aa"
+            fill="#00d4aa"
+            fillOpacity={0.2}
+            strokeWidth={2}
+            dot={{
+              r: 5,
+              fill: "#00d4aa",
+              stroke: "#0a0a0a",
+              strokeWidth: 2,
+            }}
+            activeDot={{
+              r: 7,
+              fill: "#00d4aa",
+              stroke: "#fff",
+              strokeWidth: 2,
+            }}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0a0a0a",
+              border: "1px solid #1e1e1e",
+              borderRadius: "6px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "12px",
+              color: "#fff",
+              padding: "8px 12px",
+            }}
+            formatter={(value, name) => [`${value} / 100`, name]}
+          />
+          {hasPrevious && (
+            <Legend
+              verticalAlign="bottom"
+              iconType="line"
+              wrapperStyle={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "#666", paddingTop: 4 }}
+            />
+          )}
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 

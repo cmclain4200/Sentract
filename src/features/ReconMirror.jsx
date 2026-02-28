@@ -37,60 +37,106 @@ const SOPHISTICATION_LEVELS = [
   { value: "nation_state", label: "Nation-State", desc: "APT-level, unlimited resources" },
 ];
 
-const SYSTEM_PROMPT = `You are an adversarial intelligence analyst conducting a red-team assessment for an executive protection engagement. Your role is to think like a threat actor and identify how a target's exposed data could be weaponized. You must be specific, tactical, and cite exactly which data points enable each attack vector. Your assessment is used by security professionals to protect the target.
+const SYSTEM_PROMPT = `You are an adversarial intelligence analyst generating a defensive threat assessment for a security professional protecting their client. Your output will be read by experienced investigators and executive protection specialists — write for that audience, not for a general reader.
 
-IMPORTANT FRAMING RULES:
-- Every vulnerability you identify MUST be paired with a specific countermeasure
-- Frame findings as "this data creates exposure because..." not "an attacker should..."
-- The assessment's purpose is to PROTECT the subject, not to provide an attack playbook
-- Use language like "vulnerability window," "exposure point," "data leakage" — not "attack opportunity," "target," "exploit"
-- End every section with actionable defensive recommendations
+CRITICAL FRAMING RULES:
+- This is a DEFENSIVE assessment. You are helping a protector understand how their client could be targeted so they can prevent it.
+- Every vulnerability you identify MUST be paired with a specific, actionable countermeasure.
+- Use defensive language throughout: "vulnerability window" not "attack opportunity," "exposure point" not "target," "the subject's pattern creates risk" not "the adversary should exploit."
+- Never generate operational attack plans. You are mapping vulnerabilities and recommending defenses, not writing a playbook for harm.
+- If the profile data is insufficient to support a specific claim, say so explicitly rather than fabricating plausible-sounding details.
 
-You must return your response in TWO parts, separated by the exact delimiter "---SCENARIO_JSON---"
+ASSESSMENT STRUCTURE:
 
-PART 1: The narrative assessment in markdown format. Structure around sequential PHASES (Phase 1, Phase 2, etc.) representing chronological steps of the scenario.
+Generate the assessment as a JSON object with this exact structure:
 
-## Executive Summary
-2-3 sentence overview.
-
-## Phase 1: [Phase Name]
-Describe this phase. Reference specific locations, times, data points used.
-
-## Phase 2: [Phase Name]
-Next phase. Be specific about locations, movement, timing.
-
-(Continue with 4-6 phases total)
-
-## Critical Vulnerabilities Exploited
-For each vulnerability:
-- **What data is exposed**: The specific data point(s)
-- **How it creates risk**: The specific exposure mechanism
-- **Remediation priority**: CRITICAL / HIGH / MEDIUM / LOW
-- **Recommended countermeasure**: Specific defensive action
-
-## Recommended Countermeasures
-Specific, actionable steps to neutralize each exposure vector.
-
-PART 2: After "---SCENARIO_JSON---", provide a JSON object describing the scenario geospatially for an animated map.
-
-The JSON schema:
 {
-  "scenario_title": "string",
+  "title": "Adversarial Assessment: [Descriptive title based on adversary type and objective]",
+  "executive_summary": "2-3 sentence overview of the primary threat vector and most critical vulnerability. This is what a CEO reads. Make it count.",
+  "overall_threat_level": "CRITICAL | HIGH | MODERATE | LOW",
+  "probability_assessment": "Brief statement on how likely this specific scenario is given the adversary type and subject's profile. Be honest — a nation-state operation against a mid-level executive is unlikely. Say so if that's the case.",
   "map_center": [longitude, latitude],
   "map_zoom": 12,
   "key_locations": [{ "id": "loc_1", "name": "string", "type": "target_home|target_work|target_routine|surveillance_point|staging_area|interception_point|escape_route_start|associate_location|public_venue", "coordinates": [lng, lat], "description": "string", "icon": "home|building|running|eye|flag|alert-triangle|route|users|map-pin" }],
-  "phases": [{ "phase_number": 1, "title": "string", "description": "string", "duration_text": "string", "map_state": { "center": [lng, lat], "zoom": 14, "pitch": 0, "bearing": 0 }, "active_locations": ["loc_1"], "routes": [{ "from": "loc_1", "to": "loc_2", "type": "target_route|adversary_route|surveillance_route", "style": "solid|dashed" }], "annotations": [{ "coordinates": [lng, lat], "text": "string", "type": "info|warning|danger|timing" }] }],
-  "threat_zones": [{ "center": [lng, lat], "radius_meters": 200, "type": "high_risk|moderate_risk|surveillance_zone" }]
+  "threat_zones": [{ "center": [lng, lat], "radius_meters": 200, "type": "high_risk|moderate_risk|surveillance_zone" }],
+  "phases": [
+    {
+      "number": 1,
+      "name": "Phase name (e.g., 'Initial Reconnaissance', 'Physical Surveillance', 'Technical Access')",
+      "threat_level": "CRITICAL | HIGH | MODERATE | LOW",
+      "narrative": "Detailed description of this phase. See quality rules below.",
+      "key_vulnerability": "One-sentence summary of what the adversary exploits in this phase",
+      "countermeasure": "Specific defensive recommendation for this phase. Must be as detailed as the threat description.",
+      "map_state": { "center": [lng, lat], "zoom": 14, "pitch": 0, "bearing": 0 },
+      "active_locations": ["loc_1"],
+      "routes": [{ "from": "loc_1", "to": "loc_2", "type": "target_route|adversary_route|surveillance_route", "style": "solid|dashed" }],
+      "annotations": [{ "coordinates": [lng, lat], "text": "string", "type": "info|warning|danger|timing" }]
+    }
+  ],
+  "critical_vulnerabilities": [
+    {
+      "title": "Short vulnerability name",
+      "data_exposed": "What specific data or pattern creates this vulnerability",
+      "risk_mechanism": "Exactly HOW an adversary would use this — the specific operational mechanism, not a vague 'creates risk'",
+      "severity": "CRITICAL | HIGH | MEDIUM | LOW",
+      "countermeasure": "Specific, actionable defensive recommendation",
+      "countermeasure_cost": "LOW | MEDIUM | HIGH — rough implementation effort",
+      "countermeasure_timeline": "IMMEDIATE | SHORT-TERM | LONG-TERM"
+    }
+  ],
+  "recommended_actions": {
+    "immediate": ["Actions to take within 24-48 hours"],
+    "short_term": ["Actions to take within 1-4 weeks"],
+    "long_term": ["Strategic changes to implement over months"]
+  },
+  "unused_data_note": "Optional: list profile data that was available but not operationally relevant to this threat scenario."
 }
+
+PHASE NARRATIVE QUALITY RULES:
+
+1. SPECIFICITY REQUIREMENT: Every phase must include at least one concrete tactical detail — a specific tool, technique, or procedure.
+   BAD: "Technical assets install persistent monitoring capabilities on personal devices."
+   GOOD: "A compromised home router configured to mirror DNS queries would reveal browsing patterns, VPN usage, and work platform access times without requiring device-level access."
+   If you cannot be specific about the exact method, state what class of technique applies and note that specifics depend on the adversary's capabilities.
+
+2. OPERATIONAL COHERENCE: Before including any element in a phase, verify it passes this test: "Would an actual threat actor with this sophistication level realistically do this?" Remove anything that sounds impressive but doesn't make operational sense.
+
+3. ACCESS AND RECRUITMENT: If the scenario involves an insider threat, compromised employee, or any human source, Phase 1 MUST describe the specific recruitment or compromise mechanism.
+
+4. PERSONAL DETAIL RELEVANCE FILTER: When referencing family members, relationships, or personal characteristics, you MUST articulate the specific operational mechanism. If you cannot describe exactly how a personal detail would be operationally exploited, omit it.
+
+5. PROBABILITY WEIGHTING: Not all phases are equally likely. Weight your analysis toward the highest-probability, highest-impact scenarios. If a phase requires an unlikely chain of events, say so.
+
+6. SOPHISTICATION CALIBRATION: Match the scenario complexity to the selected sophistication level:
+   - LOW: Opportunistic, uses freely available tools, limited resources, acts alone or in small groups.
+   - MEDIUM: Semi-professional, access to commercial surveillance tools, can sustain operations for weeks, may have 2-3 operatives.
+   - HIGH: Professional, dedicated team, access to advanced tooling, can sustain operations for months.
+   - NATION-STATE: Unlimited resources and time, custom tooling, multiple teams, can compromise supply chains and telecommunications infrastructure.
+   Do NOT describe nation-state capabilities for a LOW sophistication adversary.
+
+7. DATA POINT RELEVANCE: Do NOT force every piece of profile data into the scenario. Before including any profile data point in a phase, it must pass this test: "Does this specific adversary type, pursuing this specific objective, at this sophistication level, actually need or use this information?"
+
+COUNTERMEASURE QUALITY RULES:
+
+1. Every countermeasure must be as specific as the threat it responds to.
+   BAD: "Implement comprehensive monitoring."
+   GOOD: "Segment the home network with a dedicated VLAN for work devices, route all work traffic through a corporate VPN, enable firmware integrity monitoring on the router, and schedule quarterly physical sweeps of the residence for unauthorized devices."
+
+2. Countermeasures should be prioritized by cost-effectiveness.
+
+3. Include at least one countermeasure that addresses the ROOT CAUSE, not just the symptom.
 
 CRITICAL COORDINATE RULES:
 - The user message will include a "GEOCODED COORDINATES" section with exact [longitude, latitude] pairs for each known address. You MUST use these exact coordinates in your JSON — do NOT invent or approximate coordinates.
 - For map_center, use the centroid of the geocoded locations.
-- For key_locations, use the geocoded coordinates for any location that matches a profile address. For additional scenario-specific locations (surveillance points, staging areas), place them geographically near the real locations using small offsets (±0.001 to ±0.005 degrees).
+- For key_locations, use the geocoded coordinates for any location that matches a profile address. For additional scenario-specific locations (surveillance points, staging areas), place them geographically near the real locations using small offsets.
 - Every phase's map_state.center should correspond to the area where that phase's action occurs, using the real coordinates.
-- Each phase must correspond to the narrative. 4-6 phases. Valid JSON only.`;
+- Each phase must correspond to the narrative. 4-6 phases. Valid JSON only.
 
-const DELIMITER = "---SCENARIO_JSON---";
+OUTPUT FORMAT:
+- Return ONLY the JSON object. No markdown wrapping, no preamble, no commentary outside the JSON.
+- Ensure all JSON is valid and parseable.
+- Use the exact field names shown above.`;
 
 const LOADING_MESSAGES = [
   'Analyzing subject exposure profile...',
@@ -99,6 +145,9 @@ const LOADING_MESSAGES = [
   'Computing vulnerability windows...',
   'Building tactical scenario...',
 ];
+
+// Old format delimiter — kept for backward compat parsing
+const DELIMITER = "---SCENARIO_JSON---";
 
 export default function ReconMirror() {
   const { subject, caseData } = useOutletContext();
@@ -111,6 +160,7 @@ export default function ReconMirror() {
   const [objective, setObjective] = useState(OBJECTIVES[0].label);
   const [sophistication, setSophistication] = useState("medium");
   const [rawOutput, setRawOutput] = useState("");
+  const [assessment, setAssessment] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [generatedAt, setGeneratedAt] = useState(null);
@@ -125,6 +175,9 @@ export default function ReconMirror() {
   const narrativeRef = useRef(null);
   const phaseRefs = useRef({});
   const genStartRef = useRef(null);
+
+  // Detect format: new format has executive_summary at top level
+  const isNewFormat = !!assessment?.executive_summary;
 
   // Abort streaming on unmount
   useEffect(() => {
@@ -152,15 +205,60 @@ export default function ReconMirror() {
       .then(({ data }) => setAssessments(data || []));
   }, [subject?.id]);
 
+  // Derive narrative text for old format + copy button
   const narrative = useMemo(() => {
+    // New format: build copyable text from assessment
+    if (assessment?.executive_summary) {
+      const parts = [];
+      parts.push(assessment.title || "Adversarial Assessment");
+      parts.push("");
+      parts.push("EXECUTIVE SUMMARY");
+      parts.push(assessment.executive_summary);
+      parts.push("");
+      if (assessment.probability_assessment) {
+        parts.push("PROBABILITY: " + assessment.probability_assessment);
+        parts.push("");
+      }
+      (assessment.phases || []).forEach((p, i) => {
+        parts.push(`PHASE ${p.number || i + 1}: ${p.name}`);
+        parts.push(p.narrative);
+        if (p.countermeasure) parts.push("Countermeasure: " + p.countermeasure);
+        parts.push("");
+      });
+      if (assessment.critical_vulnerabilities?.length) {
+        parts.push("CRITICAL VULNERABILITIES");
+        assessment.critical_vulnerabilities.forEach((v) => {
+          parts.push(`- ${v.title} [${v.severity}]: ${v.risk_mechanism}`);
+          parts.push(`  Countermeasure: ${v.countermeasure}`);
+        });
+        parts.push("");
+      }
+      if (assessment.recommended_actions) {
+        parts.push("RECOMMENDED ACTIONS");
+        if (assessment.recommended_actions.immediate?.length) {
+          parts.push("Immediate:");
+          assessment.recommended_actions.immediate.forEach((a) => parts.push(`  - ${a}`));
+        }
+        if (assessment.recommended_actions.short_term?.length) {
+          parts.push("Short-term:");
+          assessment.recommended_actions.short_term.forEach((a) => parts.push(`  - ${a}`));
+        }
+        if (assessment.recommended_actions.long_term?.length) {
+          parts.push("Long-term:");
+          assessment.recommended_actions.long_term.forEach((a) => parts.push(`  - ${a}`));
+        }
+      }
+      return parts.join("\n");
+    }
+    // Old format: strip delimiter
     if (!rawOutput) return "";
     const idx = rawOutput.indexOf(DELIMITER);
     return idx === -1 ? rawOutput.trim() : rawOutput.slice(0, idx).trim();
-  }, [rawOutput]);
+  }, [rawOutput, assessment]);
 
-  // Parse scenario JSON when streaming completes
+  // Parse scenario JSON for old format when streaming completes
   useEffect(() => {
-    if (isGenerating || !rawOutput) return;
+    if (isGenerating || !rawOutput || assessment) return;
     const idx = rawOutput.indexOf(DELIMITER);
     if (idx === -1) {
       console.warn("[ReconMirror] No DELIMITER found in output (" + rawOutput.length + " chars)");
@@ -174,7 +272,7 @@ export default function ReconMirror() {
       console.warn("[ReconMirror] JSON parse failed:", e.message, "\nRaw (first 200):", jsonRaw.slice(0, 200));
       setParsedScenario(null);
     }
-  }, [isGenerating, rawOutput]);
+  }, [isGenerating, rawOutput, assessment]);
 
   // Scroll to active phase
   useEffect(() => {
@@ -187,6 +285,7 @@ export default function ReconMirror() {
 
     setIsGenerating(true);
     setRawOutput("");
+    setAssessment(null);
     setError(null);
     setGeneratedAt(null);
     setActivePhase(0);
@@ -218,7 +317,7 @@ export default function ReconMirror() {
         system: SYSTEM_PROMPT,
         messages: [{
           role: "user",
-          content: `Generate an adversarial assessment for the following subject:\n\nAdversary Type: ${adversaryType}\nObjective: ${objective}\nSophistication: ${levelLabel}\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}${geoSection}`,
+          content: `Generate an adversarial threat assessment for the following subject based on the profile data provided.\n\nAdversary Type: ${adversaryType}\nAdversary Objective: ${objective}\nSophistication Level: ${levelLabel}\n\nSUBJECT INTELLIGENCE PROFILE:\n${promptText}${geoSection}\n\nRespond with ONLY the JSON object as specified in your instructions. Ensure all coordinates use [longitude, latitude] format.`,
         }],
         signal: controller.signal,
       });
@@ -249,18 +348,36 @@ export default function ReconMirror() {
 
       setGeneratedAt(new Date().toISOString());
 
-      // Save assessment (immediately, regardless of reveal delay)
-      if (subject?.id && user?.id) {
+      // Parse the accumulated response as JSON
+      let parsedAssessment = null;
+      let narrativeText = "";
+      let scenarioJson = null;
+
+      const cleaned = accumulated.trim().replace(/^```json\n?/g, "").replace(/```\n?$/g, "").trim();
+      try {
+        parsedAssessment = JSON.parse(cleaned);
+      } catch (e) {
+        console.warn("[ReconMirror] JSON parse failed, checking for old delimiter format:", e.message);
+      }
+
+      if (parsedAssessment?.executive_summary) {
+        // New format — single JSON with everything
+        scenarioJson = parsedAssessment;
+        narrativeText = parsedAssessment.executive_summary;
+      } else {
+        // Fallback: try old delimiter format
         const delimIdx = accumulated.indexOf(DELIMITER);
-        const narrativeText = delimIdx === -1 ? accumulated.trim() : accumulated.slice(0, delimIdx).trim();
-        let scenarioJson = null;
+        narrativeText = delimIdx === -1 ? accumulated.trim() : accumulated.slice(0, delimIdx).trim();
         if (delimIdx !== -1) {
           try {
             const raw = accumulated.slice(delimIdx + DELIMITER.length).trim().replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
             scenarioJson = JSON.parse(raw);
           } catch {}
         }
+      }
 
+      // Save assessment to DB
+      if (subject?.id && user?.id) {
         const { data: saved } = await supabase.from("assessments").insert({
           subject_id: subject.id,
           user_id: user.id,
@@ -278,7 +395,17 @@ export default function ReconMirror() {
 
       // Enforce minimum animation duration (4s) before revealing results
       const elapsed = Date.now() - genStartRef.current;
-      const reveal = () => { setRawOutput(accumulated); setIsGenerating(false); };
+      const reveal = () => {
+        if (parsedAssessment?.executive_summary) {
+          // New format
+          setAssessment(parsedAssessment);
+          setParsedScenario(parsedAssessment); // same object serves TacticalMap
+        } else {
+          // Old format
+          setRawOutput(accumulated);
+        }
+        setIsGenerating(false);
+      };
       if (elapsed < 4000) {
         setTimeout(reveal, 4000 - elapsed);
       } else {
@@ -291,10 +418,20 @@ export default function ReconMirror() {
     }
   };
 
-  function loadAssessment(assessment) {
-    setRawOutput(assessment.narrative_output || "");
-    setParsedScenario(assessment.scenario_json || null);
-    setGeneratedAt(assessment.created_at);
+  function loadAssessment(a) {
+    const sj = a.scenario_json;
+    if (sj?.executive_summary) {
+      // New format
+      setAssessment(sj);
+      setParsedScenario(sj);
+      setRawOutput("");
+    } else {
+      // Old format
+      setAssessment(null);
+      setRawOutput(a.narrative_output || "");
+      setParsedScenario(sj || null);
+    }
+    setGeneratedAt(a.created_at);
     setActivePhase(0);
     setShowHistory(false);
   }
@@ -313,7 +450,7 @@ export default function ReconMirror() {
     { icon: FileText, label: `${dataCounts.records} public record${dataCounts.records !== 1 ? "s" : ""}`, show: dataCounts.records > 0 },
   ].filter((d) => d.show);
 
-  const hasContent = rawOutput || isGenerating || error;
+  const hasContent = rawOutput || assessment || isGenerating || error;
 
   return (
     <ModuleWrapper label="Adversarial Assessment" title="Recon Mirror" profileData={profileData} minCompleteness={20} completeness={completeness.score}>
@@ -454,7 +591,7 @@ export default function ReconMirror() {
                 <TacticalMap scenarioData={parsedScenario} activePhase={activePhase} />
                 <button
                   onClick={() => setMapExpanded(false)}
-                  className="absolute top-3 right-3 z-10 p-2 rounded-md cursor-pointer transition-all"
+                  className="absolute top-3 left-3 z-10 p-2 rounded-md cursor-pointer transition-all"
                   style={{ background: "rgba(17,17,17,0.9)", border: "1px solid #333", color: "#888" }}
                 >
                   <Minimize2 size={16} />
@@ -507,7 +644,7 @@ export default function ReconMirror() {
                 {parsedScenario && (
                   <ActionBtn icon={Map} label={showMap ? "Hide Map" : "Show Map"} onClick={() => setShowMap(!showMap)} />
                 )}
-                {narrative && (
+                {(narrative || assessment) && (
                   <>
                     <ActionBtn icon={Copy} label="Copy" onClick={() => navigator.clipboard.writeText(narrative)} />
                     <ActionBtn icon={RefreshCw} label="Regenerate" onClick={generate} />
@@ -524,9 +661,11 @@ export default function ReconMirror() {
                     <div className="text-[13px]" style={{ color: "#999" }}>{error}</div>
                   </div>
                 )}
-                {narrative ? (
+                {isNewFormat && assessment ? (
+                  <AssessmentRenderer assessment={assessment} activePhase={activePhase} onPhaseClick={setActivePhase} phaseRefs={phaseRefs} />
+                ) : narrative ? (
                   <PhaseAwareMarkdown markdown={narrative} activePhase={activePhase} onPhaseClick={setActivePhase} phaseRefs={phaseRefs} />
-                ) : isGenerating && !rawOutput ? (
+                ) : isGenerating ? (
                   <div className="flex items-center gap-3 py-4">
                     <span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" />
                     <span className="text-[14px]" style={{ color: "#888" }}>Generating adversarial assessment...</span>
@@ -557,6 +696,168 @@ export default function ReconMirror() {
   );
 }
 
+/* ── Threat level badge helper ── */
+function getThreatBadgeClass(level) {
+  const l = (level || "").toUpperCase();
+  if (l === "CRITICAL") return "sev-exploit";
+  if (l === "HIGH") return "sev-approach";
+  if (l === "MODERATE") return "sev-moderate";
+  if (l === "LOW") return "sev-recon";
+  return "sev-recon";
+}
+
+function getVulnSeverityClass(severity) {
+  const s = (severity || "").toUpperCase();
+  if (s === "CRITICAL") return "sev-critical";
+  if (s === "HIGH") return "sev-high";
+  if (s === "MEDIUM") return "sev-medium";
+  if (s === "LOW") return "sev-low";
+  return "sev-low";
+}
+
+/* ── AssessmentRenderer — structured JSON rendering ── */
+function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs }) {
+  const phases = assessment.phases || [];
+
+  return (
+    <div className="markdown-content fade-in">
+      {/* Title + Overall Threat Level */}
+      <div className="flex items-center gap-4 mb-5">
+        <h2 className="!mt-0 !mb-0 !pb-0 !border-0 flex-1">{assessment.title || "Adversarial Assessment"}</h2>
+        <span className={`narrative-severity ${getThreatBadgeClass(assessment.overall_threat_level)}`}>
+          {assessment.overall_threat_level}
+        </span>
+      </div>
+
+      {/* Executive Summary */}
+      <div className="assessment-summary">{assessment.executive_summary}</div>
+
+      {/* Probability Assessment */}
+      {assessment.probability_assessment && (
+        <div className="probability-note">{assessment.probability_assessment}</div>
+      )}
+
+      {/* Phases */}
+      {phases.map((phase, i) => {
+        const isActive = i === activePhase;
+        return (
+          <div
+            key={i}
+            ref={(el) => { phaseRefs.current[`phase-${i}`] = el; }}
+            className={`relative pl-4 py-3 my-2 rounded-r-md cursor-pointer transition-all duration-300 ${isActive ? "narrative-phase-enter" : ""}`}
+            style={{ borderLeft: isActive ? "3px solid #09BC8A" : "3px solid #2a2a2a", background: isActive ? "#111" : "transparent" }}
+            onClick={() => onPhaseClick(i)}
+          >
+            <div className="narrative-header">
+              <span className="narrative-phase-label">Phase {phase.number || i + 1}</span>
+              <span className="narrative-phase-name">{phase.name}</span>
+              <span className={`narrative-severity ${getThreatBadgeClass(phase.threat_level)}`}>
+                {phase.threat_level}
+              </span>
+            </div>
+            {phase.key_vulnerability && (
+              <div className="key-vulnerability">{phase.key_vulnerability}</div>
+            )}
+            <div className="narrative-body">
+              <p>{highlightEntities(phase.narrative)}</p>
+            </div>
+            {phase.countermeasure && (
+              <div className="narrative-countermeasure">
+                <div className="countermeasure-label">Countermeasure</div>
+                <div className="countermeasure-text">{phase.countermeasure}</div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Critical Vulnerabilities */}
+      {assessment.critical_vulnerabilities?.length > 0 && (
+        <div className="mt-8">
+          <h2>Critical Vulnerabilities</h2>
+          {assessment.critical_vulnerabilities.map((vuln, i) => (
+            <div key={i} className="vuln-card">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`vuln-severity ${getVulnSeverityClass(vuln.severity)}`}>{vuln.severity}</span>
+                <span className="text-[15px] font-semibold" style={{ color: "#f0f0f0" }}>{vuln.title}</span>
+              </div>
+              {vuln.data_exposed && (
+                <div className="text-[13px] mb-1.5" style={{ color: "#999" }}>
+                  <span style={{ color: "#666" }}>Data Exposed:</span> {vuln.data_exposed}
+                </div>
+              )}
+              <div className="text-[14px] mb-3" style={{ color: "#ccc", lineHeight: 1.6 }}>{vuln.risk_mechanism}</div>
+              {vuln.countermeasure && (
+                <div className="narrative-countermeasure">
+                  <div className="countermeasure-label">Countermeasure</div>
+                  <div className="countermeasure-text">{vuln.countermeasure}</div>
+                  <div className="flex gap-4 mt-2">
+                    {vuln.countermeasure_cost && (
+                      <span className="text-[11px] font-mono" style={{ color: "#666" }}>
+                        Cost: <span style={{ color: "#999" }}>{vuln.countermeasure_cost}</span>
+                      </span>
+                    )}
+                    {vuln.countermeasure_timeline && (
+                      <span className="text-[11px] font-mono" style={{ color: "#666" }}>
+                        Timeline: <span style={{ color: "#999" }}>{vuln.countermeasure_timeline}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recommended Actions */}
+      {assessment.recommended_actions && (
+        <div className="mt-8">
+          <h2>Recommended Actions</h2>
+          {assessment.recommended_actions.immediate?.length > 0 && (
+            <div className="action-group">
+              <div className="action-group-title immediate">Immediate (24-48 hours)</div>
+              <ul>
+                {assessment.recommended_actions.immediate.map((action, i) => (
+                  <li key={i}>{action}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {assessment.recommended_actions.short_term?.length > 0 && (
+            <div className="action-group">
+              <div className="action-group-title short-term">Short-term (1-4 weeks)</div>
+              <ul>
+                {assessment.recommended_actions.short_term.map((action, i) => (
+                  <li key={i}>{action}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {assessment.recommended_actions.long_term?.length > 0 && (
+            <div className="action-group">
+              <div className="action-group-title long-term">Long-term (strategic)</div>
+              <ul>
+                {assessment.recommended_actions.long_term.map((action, i) => (
+                  <li key={i}>{action}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Unused data note */}
+      {assessment.unused_data_note && (
+        <div className="probability-note mt-6">
+          <span style={{ color: "#666", fontStyle: "normal", fontWeight: 500 }}>Note:</span> {assessment.unused_data_note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Legacy helpers for old-format rendering ── */
 function getSeverityClass(title) {
   const t = (title || "").toLowerCase();
   if (t.includes("recon") || t.includes("surveillance") || t.includes("gather") || t.includes("intel")) return "sev-recon";
@@ -635,7 +936,7 @@ function PhaseAwareMarkdown({ markdown, activePhase, onPhaseClick, phaseRefs }) 
               </div>
               {bodyParts.length > 1 && (
                 <div className="narrative-countermeasure">
-                  <div className="countermeasure-label">⛨ Countermeasure</div>
+                  <div className="countermeasure-label">Countermeasure</div>
                   <div className="countermeasure-text">
                     <ReactMarkdown>{bodyParts.slice(1).join("\n").replace(/^\*\*(?:Countermeasure|Recommended countermeasure|Mitigation|Remediation)[:\s*]*\*\*\s*/i, "")}</ReactMarkdown>
                   </div>

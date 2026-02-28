@@ -685,3 +685,121 @@ textarea.form-input {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Assessment Renderer (structured JSON output) ── */
+.narrative-severity.sev-moderate {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.assessment-summary {
+  font-size: 16px;
+  color: #ccc;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+.probability-note {
+  font-size: 13px;
+  color: #777;
+  font-style: italic;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid #333;
+  border-radius: 0 4px 4px 0;
+}
+
+.key-vulnerability {
+  font-size: 13px;
+  color: #999;
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.vuln-card {
+  background: #0d0d0d;
+  border: 1px solid #1e1e1e;
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.vuln-card:hover {
+  border-color: #333;
+}
+
+.vuln-severity {
+  display: inline-flex;
+  align-items: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.vuln-severity.sev-critical {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.vuln-severity.sev-high {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.vuln-severity.sev-medium {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+.vuln-severity.sev-low {
+  color: #09BC8A;
+  background: rgba(9, 188, 138, 0.1);
+  border: 1px solid rgba(9, 188, 138, 0.2);
+}
+
+.action-group {
+  margin-bottom: 20px;
+}
+
+.action-group-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.action-group-title.immediate { color: #ef4444; }
+.action-group-title.short-term { color: #f59e0b; }
+.action-group-title.long-term { color: #09BC8A; }
+
+.action-group ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.action-group li {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.6;
+  padding: 6px 0 6px 20px;
+  position: relative;
+}
+.action-group li::before {
+  content: "›";
+  position: absolute;
+  left: 4px;
+  color: #555;
+  font-weight: 600;
+}
