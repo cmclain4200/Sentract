@@ -162,12 +162,16 @@ export default function ReconMirror() {
   useEffect(() => {
     if (isGenerating || !rawOutput) return;
     const idx = rawOutput.indexOf(DELIMITER);
-    if (idx === -1) return;
+    if (idx === -1) {
+      console.warn("[ReconMirror] No DELIMITER found in output (" + rawOutput.length + " chars)");
+      return;
+    }
     const jsonRaw = rawOutput.slice(idx + DELIMITER.length).trim();
     try {
       const cleaned = jsonRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       setParsedScenario(JSON.parse(cleaned));
-    } catch {
+    } catch (e) {
+      console.warn("[ReconMirror] JSON parse failed:", e.message, "\nRaw (first 200):", jsonRaw.slice(0, 200));
       setParsedScenario(null);
     }
   }, [isGenerating, rawOutput]);
@@ -222,11 +226,14 @@ export default function ReconMirror() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
+      let lineBuf = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
+        lineBuf += decoder.decode(value, { stream: true });
+        const lines = lineBuf.split("\n");
+        lineBuf = lines.pop(); // keep incomplete trailing line in buffer
+        for (const line of lines) {
           if (line.startsWith("data: ")) {
             const data = line.slice(6).trim();
             if (data === "[DONE]") continue;
