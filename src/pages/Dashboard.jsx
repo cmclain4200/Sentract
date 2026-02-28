@@ -212,23 +212,20 @@ export default function Dashboard() {
                 return (
                   <div
                     key={c.id}
-                    className="surface text-left transition-all duration-200 flex flex-col relative"
+                    className="surface text-left transition-all duration-200 flex flex-col cursor-pointer"
                     style={{
                       background: "#111",
                       border: `1px solid ${isHidden ? "#1a1a1a" : "#1e1e1e"}`,
                       padding: "20px 22px",
                       minHeight: 160,
                       opacity: isHidden ? 0.5 : 1,
+                      position: "relative",
+                      zIndex: caseMenu === c.id ? 50 : undefined,
                     }}
+                    onClick={() => navigate(`/case/${c.id}/profile`)}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = isHidden ? "#1a1a1a" : "#1e1e1e")}
                   >
-                    {/* Clickable area */}
-                    <button
-                      onClick={() => navigate(`/case/${c.id}/profile`)}
-                      className="absolute inset-0 cursor-pointer"
-                      style={{ background: "transparent", border: "none" }}
-                    />
                     {/* Top row: type badge + aegis score + menu */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">

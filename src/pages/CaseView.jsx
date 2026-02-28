@@ -140,7 +140,7 @@ export default function CaseView() {
           >
             <span className="sub-label mr-1" style={{ color: "#444" }}>Subject</span>
             {visibleSubjects.map((s) => (
-              <div key={s.id} className="relative flex items-center">
+              <div key={s.id} className="relative flex items-center" style={{ zIndex: subjectMenu === s.id ? 50 : undefined }}>
                 <button
                   onClick={() => setActiveSubject(s)}
                   className="flex items-center gap-2 rounded-l text-[13px] cursor-pointer transition-all"
