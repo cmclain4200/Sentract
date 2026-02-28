@@ -804,9 +804,9 @@ function CompanyLookupPanel({ onSelect }) {
   }
 
   async function handleSelect(company) {
-    if (company.jurisdiction && company.company_number) {
-      setLoadingDetails(company.company_number);
-      const details = await getCompanyDetails(company.jurisdiction.toLowerCase(), company.company_number);
+    if (company.cik) {
+      setLoadingDetails(company.cik);
+      const details = await getCompanyDetails(company.cik);
       setLoadingDetails(null);
       onSelect(details || company);
     } else {
@@ -832,17 +832,16 @@ function CompanyLookupPanel({ onSelect }) {
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] text-white font-medium">{c.name}</div>
                 <div className="text-[11px]" style={{ color: "#666" }}>
-                  {[c.jurisdiction, c.incorporation_date ? `Inc. ${c.incorporation_date}` : null, c.status].filter(Boolean).join(" · ")}
+                  {[c.ticker, c.cik ? `CIK ${c.cik}` : null].filter(Boolean).join(" · ")}
                 </div>
-                {c.registered_address && <div className="text-[11px] mt-0.5" style={{ color: "#555" }}>{c.registered_address}</div>}
               </div>
               <button
                 onClick={() => handleSelect(c)}
-                disabled={loadingDetails === c.company_number}
+                disabled={loadingDetails === c.cik}
                 className="text-[10px] font-mono shrink-0 px-2.5 py-1 rounded cursor-pointer"
                 style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}
               >
-                {loadingDetails === c.company_number ? "..." : "Use This"}
+                {loadingDetails === c.cik ? "..." : "Use This"}
               </button>
             </div>
           ))}
@@ -865,12 +864,14 @@ function ProfessionalSection({ profile, update, aiFields }) {
   function handleCompanySelect(company) {
     update((p) => {
       const next = { ...p };
-      if (company.type) next.professional = { ...next.professional, organization_type: company.type };
+      if (company.entity_type) next.professional = { ...next.professional, organization_type: company.entity_type };
+      if (company.sic_description) next.professional = { ...next.professional, industry: company.sic_description };
       // Add corporate filing if we have details
-      if (company.jurisdiction) {
-        const filing = { entity: company.name, role: "", jurisdiction: company.jurisdiction, source: "OpenCorporates" };
-        if (company.incorporation_date) filing.incorporation_date = company.incorporation_date;
-        if (company.status) filing.status = company.status;
+      if (company.cik) {
+        const filing = { entity: company.name, role: "", cik: company.cik, source: "SEC EDGAR" };
+        if (company.ticker) filing.ticker = company.ticker;
+        if (company.state) filing.state = company.state;
+        if (company.exchanges?.length) filing.exchanges = company.exchanges;
         const filings = [...(next.public_records?.corporate_filings || [])];
         const exists = filings.some((f) => f.entity?.toLowerCase() === company.name?.toLowerCase());
         if (!exists) {

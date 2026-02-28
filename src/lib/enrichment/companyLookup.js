@@ -7,53 +7,47 @@ export async function searchCompany(companyName) {
     const data = await searchCompanyApi(companyName);
     if (!data) return { error: 'api_error', message: 'API request failed' };
 
-    const companies = data.results?.companies || [];
+    const companies = data.results || [];
 
     return {
       results: companies.map((c) => ({
-        name: c.company?.name,
-        company_number: c.company?.company_number,
-        jurisdiction: c.company?.jurisdiction_code?.toUpperCase(),
-        incorporation_date: c.company?.incorporation_date,
-        status: c.company?.current_status,
-        registered_address: c.company?.registered_address_in_full,
-        type: c.company?.company_type,
-        opencorporates_url: c.company?.opencorporates_url,
-        source: 'OpenCorporates',
+        name: c.name,
+        cik: c.cik,
+        ticker: c.ticker,
+        source: 'SEC EDGAR',
       })),
-      total: data.total_count || companies.length,
+      total: companies.length,
     };
   } catch (err) {
     return { error: 'network_error', message: err.message };
   }
 }
 
-export async function getCompanyDetails(jurisdictionCode, companyNumber) {
+export async function getCompanyDetails(cik) {
   try {
-    const data = await getCompanyDetailsApi(jurisdictionCode, companyNumber);
+    const data = await getCompanyDetailsApi(cik);
     if (!data) return null;
 
-    const company = data.results?.company;
-    if (!company) return null;
+    const recentFilings = (data.filings?.recent?.form || []).slice(0, 10).map((form, i) => ({
+      form,
+      date: data.filings.recent.filingDate?.[i],
+      accession: data.filings.recent.accessionNumber?.[i],
+      description: data.filings.recent.primaryDocDescription?.[i],
+    }));
 
     return {
-      name: company.name,
-      company_number: company.company_number,
-      jurisdiction: company.jurisdiction_code?.toUpperCase(),
-      incorporation_date: company.incorporation_date,
-      dissolution_date: company.dissolution_date,
-      status: company.current_status,
-      type: company.company_type,
-      registered_address: company.registered_address_in_full,
-      agent_name: company.agent_name,
-      officers: (company.officers || []).map((o) => ({
-        name: o.officer?.name,
-        position: o.officer?.position,
-        start_date: o.officer?.start_date,
-        end_date: o.officer?.end_date,
-      })),
-      opencorporates_url: company.opencorporates_url,
-      source: 'OpenCorporates',
+      name: data.name,
+      cik: data.cik,
+      ticker: data.tickers?.[0] || null,
+      sic_description: data.sicDescription || null,
+      sic: data.sic || null,
+      state: data.stateOfIncorporation || data.addresses?.business?.stateOrCountry || null,
+      fiscal_year_end: data.fiscalYearEnd || null,
+      exchanges: data.exchanges || [],
+      entity_type: data.entityType || null,
+      ein: data.ein || null,
+      recent_filings: recentFilings,
+      source: 'SEC EDGAR',
     };
   } catch (err) {
     return null;

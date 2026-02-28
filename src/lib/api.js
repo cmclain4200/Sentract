@@ -115,16 +115,24 @@ export function hasGeocodingAccess() {
   return true;
 }
 
-// ── OpenCorporates ──
+// ── SEC EDGAR ──
+
+const SEC_USER_AGENT = "Sentract app@sentract.com";
 
 export async function searchCompanyApi(query) {
   if (isDev) {
-    // In dev, call OpenCorporates directly (no key needed)
-    const response = await fetch(
-      `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`
-    );
-    if (!response.ok) return null;
-    return response.json();
+    // In dev, call SEC EDGAR directly (no key needed)
+    const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
+      headers: { "User-Agent": SEC_USER_AGENT },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const q = query.toLowerCase();
+    const matches = Object.values(data)
+      .filter((t) => t.title?.toLowerCase().includes(q) || t.ticker?.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((t) => ({ name: t.title, cik: t.cik_str, ticker: t.ticker }));
+    return { results: matches };
   }
 
   // Production: use serverless proxy
@@ -133,18 +141,19 @@ export async function searchCompanyApi(query) {
   return response.json();
 }
 
-export async function getCompanyDetailsApi(jurisdictionCode, companyNumber) {
+export async function getCompanyDetailsApi(cik) {
+  const paddedCik = String(cik).padStart(10, "0");
+
   if (isDev) {
     const response = await fetch(
-      `https://api.opencorporates.com/v0.4/companies/${jurisdictionCode.toLowerCase()}/${companyNumber}`
+      `https://data.sec.gov/submissions/CIK${paddedCik}.json`,
+      { headers: { "User-Agent": SEC_USER_AGENT } }
     );
     if (!response.ok) return null;
     return response.json();
   }
 
-  const response = await fetch(
-    `/api/company?jurisdiction=${encodeURIComponent(jurisdictionCode)}&number=${encodeURIComponent(companyNumber)}`
-  );
+  const response = await fetch(`/api/company?cik=${encodeURIComponent(cik)}`);
   if (!response.ok) return null;
   return response.json();
 }
