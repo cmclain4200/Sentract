@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
@@ -18,8 +18,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
-  const [caseMenu, setCaseMenu] = useState(null); // case id with open menu
-  const [confirmDelete, setConfirmDelete] = useState(null); // case object to confirm delete
+  const [caseMenu, setCaseMenu] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [view, setView] = useState("cases");
+  const [subjectSort, setSubjectSort] = useState("recent");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -30,7 +32,7 @@ export default function Dashboard() {
   async function fetchCases() {
     const { data, error } = await supabase
       .from("cases")
-      .select("*, subjects(id, name, data_completeness)")
+      .select("*, subjects(id, name, data_completeness, profile_data, created_at)")
       .order("created_at", { ascending: false });
     if (!error) {
       setCases(data || []);
@@ -105,12 +107,84 @@ export default function Dashboard() {
     return { totalCases, totalSubjects, avgCompleteness };
   }, [cases]);
 
+  // Build flat subject list from nested case data
+  const allSubjects = useMemo(() => {
+    const list = [];
+    for (const c of cases) {
+      if (c.status === "archived") continue;
+      for (const s of c.subjects || []) {
+        list.push({
+          ...s,
+          case_id: c.id,
+          case_name: c.name,
+          case_type: c.type,
+          profile_data: s.profile_data || {},
+          aegis: aegisScores[s.id] ?? null,
+        });
+      }
+    }
+    // Sort
+    if (subjectSort === "name") {
+      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (subjectSort === "score") {
+      list.sort((a, b) => {
+        if (a.aegis == null && b.aegis == null) return 0;
+        if (a.aegis == null) return 1;
+        if (b.aegis == null) return -1;
+        return b.aegis - a.aegis;
+      });
+    } else {
+      // recent — by created_at desc
+      list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    }
+    return list;
+  }, [cases, aegisScores, subjectSort]);
+
+  const subjectStats = useMemo(() => {
+    if (!allSubjects.length) return null;
+    const total = allSubjects.length;
+    let compSum = 0, compCount = 0, scored = 0;
+    for (const s of allSubjects) {
+      if (s.data_completeness != null) { compSum += s.data_completeness; compCount++; }
+      if (s.aegis != null) scored++;
+    }
+    const avgComp = compCount > 0 ? Math.round(compSum / compCount) : 0;
+    return { total, avgComp, scored };
+  }, [allSubjects]);
+
+  function aegisColor(score) {
+    if (score >= 75) return "#ef4444";
+    if (score >= 55) return "#f97316";
+    if (score >= 35) return "#f59e0b";
+    return "#09BC8A";
+  }
+
+  function aegisBg(score) {
+    if (score >= 75) return "rgba(239,68,68,0.1)";
+    if (score >= 55) return "rgba(249,115,22,0.1)";
+    if (score >= 35) return "rgba(245,158,11,0.1)";
+    return "rgba(9,188,138,0.1)";
+  }
+
+  function aegisBorder(score) {
+    if (score >= 75) return "rgba(239,68,68,0.25)";
+    if (score >= 55) return "rgba(249,115,22,0.25)";
+    if (score >= 35) return "rgba(245,158,11,0.25)";
+    return "rgba(9,188,138,0.25)";
+  }
+
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
       <div className="max-w-5xl mx-auto">
-        {/* Header row: title + new case button */}
+        {/* Header row: title + toggle + new case button */}
         <div className="flex items-start justify-between mb-6">
-          <SectionHeader label="Dashboard" title="Cases" />
+          <div className="flex items-center gap-4">
+            <SectionHeader label="Dashboard" title="Cases" />
+            <div className="view-toggle" style={{ marginTop: 24 }}>
+              <button className={view === "cases" ? "active" : ""} onClick={() => setView("cases")}>Cases</button>
+              <button className={view === "subjects" ? "active" : ""} onClick={() => setView("subjects")}>Subjects</button>
+            </div>
+          </div>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
@@ -145,7 +219,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Stats Strip */}
-            {stats && (
+            {view === "cases" && stats && (
               <div className="flex items-center gap-6 pb-5 mb-6" style={{ borderBottom: "1px solid #1e1e1e" }}>
                 <div className="flex items-center gap-2.5">
                   <Briefcase size={14} color="#09BC8A" />
@@ -179,8 +253,49 @@ export default function Dashboard() {
                 )}
               </div>
             )}
+            {view === "subjects" && subjectStats && (
+              <div className="flex items-center gap-6 pb-5 mb-6" style={{ borderBottom: "1px solid #1e1e1e" }}>
+                <div className="flex items-center gap-2.5">
+                  <Users size={14} color="#3b82f6" />
+                  <span className="text-[15px] font-semibold text-white">{subjectStats.total}</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Total Subjects</span>
+                </div>
+                <span style={{ color: "#2a2a2a" }}>·</span>
+                <div className="flex items-center gap-2.5">
+                  <BarChart3 size={14} color={subjectStats.avgComp >= 70 ? "#10b981" : subjectStats.avgComp >= 40 ? "#f59e0b" : "#ef4444"} />
+                  <span className="text-[15px] font-semibold text-white">{subjectStats.avgComp}%</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Avg Completeness</span>
+                </div>
+                <span style={{ color: "#2a2a2a" }}>·</span>
+                <div className="flex items-center gap-2.5">
+                  <Target size={14} color="#09BC8A" />
+                  <span className="text-[15px] font-semibold text-white">{subjectStats.scored}</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Scored (Aegis)</span>
+                </div>
+                {/* Sort dropdown */}
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-[11px] font-mono" style={{ color: "#444" }}>Sort:</span>
+                  <select
+                    value={subjectSort}
+                    onChange={(e) => setSubjectSort(e.target.value)}
+                    className="text-[12px] font-mono cursor-pointer outline-none"
+                    style={{
+                      background: "#111",
+                      border: "1px solid #1e1e1e",
+                      color: "#888",
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <option value="recent">Recent</option>
+                    <option value="name">Name</option>
+                    <option value="score">Score</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
-            {visibleCases.length === 0 && hiddenCount > 0 && (
+            {view === "cases" && visibleCases.length === 0 && hiddenCount > 0 && (
               <div className="surface text-center" style={{ padding: "32px" }}>
                 <EyeOff size={32} color="#333" className="mx-auto mb-3" />
                 <div className="text-[15px] mb-3" style={{ color: "#555" }}>All cases are hidden.</div>
@@ -195,7 +310,7 @@ export default function Dashboard() {
             )}
 
             {/* Case Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {view === "cases" && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {visibleCases.map((c) => {
                 const subs = c.subjects || [];
                 const subCount = subs.length;
@@ -347,7 +462,105 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-            </div>
+            </div>}
+
+            {/* Subjects Grid */}
+            {view === "subjects" && (
+              allSubjects.length === 0 ? (
+                <div className="surface text-center" style={{ padding: "48px 32px" }}>
+                  <Users size={44} color="#333" className="mx-auto mb-4" />
+                  <div className="text-[20px] text-white font-semibold mb-3">No subjects yet</div>
+                  <div className="text-[15px]" style={{ color: "#555" }}>
+                    Create a case first, then add subjects.
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {allSubjects.map((s) => {
+                    const comp = s.data_completeness || 0;
+                    const prof = s.profile_data?.professional;
+                    const titleOrg = [prof?.title, prof?.organization].filter(Boolean).join(", ");
+
+                    return (
+                      <div
+                        key={s.id}
+                        className="surface text-left transition-all duration-200 flex flex-col cursor-pointer"
+                        style={{
+                          background: "#111",
+                          border: "1px solid #1e1e1e",
+                          padding: "20px 22px",
+                          minHeight: 150,
+                        }}
+                        onClick={() => navigate(`/case/${s.case_id}/profile`)}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+                      >
+                        {/* Top row: case type badge + Aegis score */}
+                        <div className="flex items-center justify-between mb-3">
+                          <span
+                            className="badge"
+                            style={{
+                              color: typeColor(s.case_type),
+                              background: `${typeColor(s.case_type)}18`,
+                              border: `1px solid ${typeColor(s.case_type)}35`,
+                              fontSize: 11,
+                              padding: "3px 8px",
+                            }}
+                          >
+                            {s.case_type}
+                          </span>
+                          <span
+                            className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                            style={{
+                              color: s.aegis != null ? aegisColor(s.aegis) : "#444",
+                              background: s.aegis != null ? aegisBg(s.aegis) : "rgba(255,255,255,0.03)",
+                              border: `1px solid ${s.aegis != null ? aegisBorder(s.aegis) : "#1e1e1e"}`,
+                            }}
+                          >
+                            {s.aegis != null ? s.aegis : "\u2014"}
+                          </span>
+                        </div>
+
+                        {/* Subject name */}
+                        <div className="text-white font-semibold text-[16px] mb-1 leading-snug">{s.name}</div>
+
+                        {/* Title, Organization */}
+                        {titleOrg && (
+                          <div className="text-[13px] mb-1" style={{ color: "#666" }}>{titleOrg}</div>
+                        )}
+
+                        {/* Case name */}
+                        <div className="text-[12px] font-mono" style={{ color: "#444" }}>
+                          Case: {s.case_name}
+                        </div>
+
+                        <div className="flex-1" />
+
+                        {/* Bottom row: completeness bar + date */}
+                        <div className="flex items-center gap-3 mt-4 pt-3" style={{ borderTop: "1px solid #1a1a1a" }}>
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <div className="flex-1 h-1.5 rounded-full" style={{ background: "#1a1a1a" }}>
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${comp}%`,
+                                  background: comp >= 70 ? "#10b981" : comp >= 40 ? "#f59e0b" : "#ef4444",
+                                  transition: "width 0.4s ease",
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono" style={{ color: "#555" }}>{comp}%</span>
+                          </div>
+                          <span className="text-[11px] font-mono shrink-0" style={{ color: "#444" }}>
+                            {new Date(s.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
           </>
         )}
       </div>

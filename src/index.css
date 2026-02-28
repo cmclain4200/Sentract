@@ -848,3 +848,31 @@ textarea.form-input {
   align-items: center;
   gap: 4px;
 }
+
+/* View Toggle (Dashboard) */
+.view-toggle {
+  display: flex;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.view-toggle button {
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.view-toggle button:hover {
+  color: #999;
+}
+.view-toggle button.active {
+  background: #09BC8A;
+  color: #000;
+}
