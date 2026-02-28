@@ -286,6 +286,24 @@ export default function Profile() {
   const saveTimeout = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Reset all state when subject changes
+  useEffect(() => {
+    const base = JSON.parse(JSON.stringify(EMPTY_PROFILE));
+    if (subject?.profile_data && Object.keys(subject.profile_data).length > 0) {
+      setProfile(deepMerge(base, subject.profile_data));
+    } else {
+      setProfile(base);
+    }
+    setSaveStatus("idle");
+    setAiFields(new Set());
+    setUploadState("idle");
+    setUploadError(null);
+    setExtractionResult(null);
+    setShowUpload(true);
+    setExposuresCollapsed(false);
+    setShowBatchEnrich(false);
+  }, [subject?.id]);
+
   const completeness = calculateCompleteness(profile);
   const exposures = useMemo(() => generateKeyExposures(profile), [profile]);
 
