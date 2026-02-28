@@ -51,7 +51,7 @@
    SECTION DIVIDERS
    ============================================ */
 .section-divider {
-  height: 48px;
+  height: 24px;
   background: repeating-linear-gradient(
     45deg,
     transparent,
@@ -435,7 +435,7 @@
 /* ============================================
    SECTIONS
    ============================================ */
-.l-section { padding: 120px 0; }
+.l-section { padding: 80px 0; }
 .l-section-header { margin-bottom: 64px; }
 .l-section-title {
   font-family: var(--font-sans);
@@ -503,12 +503,15 @@
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
 }
 .l-feature-visual {
-  height: 220px;
+  min-height: 240px;
   background: #060606;
   border-bottom: 1px solid var(--border);
   position: relative;
   overflow: hidden;
   padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .l-feature-content { padding: 24px; }
 .l-feature-subtitle {
@@ -657,7 +660,7 @@
   transition: all 0.3s;
 }
 .l-usecase-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.l-usecase-icon { font-size: 28px; margin-bottom: 14px; opacity: 0.6; }
+.l-usecase-icon { margin-bottom: 14px; display: flex; justify-content: center; }
 .l-usecase-name { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
 .l-usecase-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
@@ -669,7 +672,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 40px;
 }
-.l-security-icon { font-size: 24px; margin-bottom: 16px; opacity: 0.6; }
+.l-security-icon { margin-bottom: 16px; }
 .l-security-title { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 10px; }
 .l-security-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
 
@@ -691,7 +694,7 @@
 }
 .l-pricing-card.featured {
   border-color: var(--accent);
-  box-shadow: 0 0 40px rgba(9, 188, 138,0.06);
+  box-shadow: 0 0 30px rgba(0, 212, 170, 0.08);
 }
 .l-pricing-popular {
   position: absolute;

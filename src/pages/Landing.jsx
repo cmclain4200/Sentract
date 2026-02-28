@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { Shield, Search, Building2, BarChart3, Scale, Lock, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import "./Landing.css";
 
@@ -227,7 +228,7 @@ export default function Landing() {
           <div className="l-features-grid-3 l-reveal">
             {/* RECON MIRROR */}
             <div className="l-feature-card">
-              <div className="l-feature-visual" style={{ padding: 0 }}>
+              <div className="l-feature-visual" style={{ padding: 0, display: "block" }}>
                 <div className="l-mini-map">
                   <div style={{ position: "absolute", top: 8, left: 10, fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6 }}>
                     Recon Mirror
@@ -236,11 +237,14 @@ export default function Landing() {
                   <div className="l-map-dot" style={{ top: "50%", left: "45%", background: "var(--warning)" }} />
                   <div className="l-map-dot" style={{ top: "30%", left: "70%", background: "var(--critical)" }} />
                   <div className="l-map-dot" style={{ top: "70%", left: "55%", background: "var(--accent)" }} />
-                  <div className="l-map-line" style={{ top: "38%", left: "23%", width: 80, background: "var(--accent)", transform: "rotate(5deg)" }} />
-                  <div className="l-map-line" style={{ top: "47%", left: "48%", width: 70, background: "var(--warning)", transform: "rotate(-20deg)" }} />
+                  <div className="l-map-dot" style={{ top: "22%", left: "48%", background: "var(--warning)" }} />
+                  <div className="l-map-dot" style={{ top: "60%", left: "30%", background: "var(--critical)" }} />
+                  <div className="l-map-line" style={{ top: "38%", left: "23%", width: 80, height: 2, background: "var(--accent)", transform: "rotate(5deg)", opacity: 0.5 }} />
+                  <div className="l-map-line" style={{ top: "47%", left: "48%", width: 70, height: 2, background: "var(--warning)", transform: "rotate(-20deg)", opacity: 0.5 }} />
+                  <div className="l-map-line" style={{ top: "33%", left: "52%", width: 60, height: 2, background: "var(--critical)", transform: "rotate(15deg)", opacity: 0.5 }} />
                   <div style={{ position: "absolute", bottom: 12, left: 10, right: 10 }}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 7, color: "var(--text-muted)", marginBottom: 4 }}>PHASE 2 — APPROACH VECTOR</div>
-                    <div style={{ fontSize: 9, color: "var(--text-secondary)", lineHeight: 1.4 }}>Subject departs primary residence at 0615 via established route toward Marina Green waterfront...</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 7, color: "#00d4aa", opacity: 0.8, marginBottom: 4 }}>PHASE 2 — APPROACH VECTOR</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>Subject departs primary residence at 0615 via established route toward Marina Green waterfront...</div>
                   </div>
                 </div>
               </div>
@@ -463,11 +467,11 @@ export default function Landing() {
           </div>
           <div className="l-usecase-grid l-reveal">
             {[
-              { icon: "🛡", name: "Executive Protection", desc: "Threat assessments for high-profile clients" },
-              { icon: "🔍", name: "Due Diligence", desc: "Risk profiles for M&A and hiring decisions" },
-              { icon: "🏢", name: "Corporate Security", desc: "Board-ready metrics and C-suite risk analysis" },
-              { icon: "📋", name: "Insurance Risk", desc: "Quantified exposure for K&R and cyber underwriting" },
-              { icon: "⚖", name: "Legal Investigation", desc: "Traceable analysis for litigation support" },
+              { icon: <Shield size={24} strokeWidth={1.5} color="#00d4aa" />, name: "Executive Protection", desc: "Threat assessments for high-profile clients" },
+              { icon: <Search size={24} strokeWidth={1.5} color="#00d4aa" />, name: "Due Diligence", desc: "Risk profiles for M&A and hiring decisions" },
+              { icon: <Building2 size={24} strokeWidth={1.5} color="#00d4aa" />, name: "Corporate Security", desc: "Board-ready metrics and C-suite risk analysis" },
+              { icon: <BarChart3 size={24} strokeWidth={1.5} color="#00d4aa" />, name: "Insurance Risk", desc: "Quantified exposure for K&R and cyber underwriting" },
+              { icon: <Scale size={24} strokeWidth={1.5} color="#00d4aa" />, name: "Legal Investigation", desc: "Traceable analysis for litigation support" },
             ].map((u) => (
               <div className="l-usecase-card" key={u.name}>
                 <div className="l-usecase-icon">{u.icon}</div>
@@ -490,7 +494,7 @@ export default function Landing() {
           </div>
           <div className="l-security-grid l-reveal">
             <div>
-              <div className="l-security-icon">🔒</div>
+              <div className="l-security-icon"><Lock size={24} strokeWidth={1.5} color="#00d4aa" /></div>
               <div className="l-security-title">Encryption & Isolation</div>
               <div className="l-security-desc">
                 All data encrypted in transit (TLS) and at rest. Per-user isolation via
@@ -499,7 +503,7 @@ export default function Landing() {
               </div>
             </div>
             <div>
-              <div className="l-security-icon">🧠</div>
+              <div className="l-security-icon"><ShieldCheck size={24} strokeWidth={1.5} color="#00d4aa" /></div>
               <div className="l-security-title">Zero AI Training</div>
               <div className="l-security-desc">
                 Investigation data sent to AI models is never retained or used for training.
@@ -507,7 +511,7 @@ export default function Landing() {
               </div>
             </div>
             <div>
-              <div className="l-security-icon">🗑</div>
+              <div className="l-security-icon"><Trash2 size={24} strokeWidth={1.5} color="#00d4aa" /></div>
               <div className="l-security-title">Minimal Retention</div>
               <div className="l-security-desc">
                 Uploaded documents are processed and discarded. Only structured profiles and
