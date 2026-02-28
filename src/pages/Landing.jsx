@@ -228,20 +228,23 @@ export default function Landing() {
           <div className="l-features-grid-3 l-reveal">
             {/* RECON MIRROR */}
             <div className="l-feature-card">
-              <div className="l-feature-visual" style={{ padding: 0, display: "block" }}>
-                <div className="l-mini-map">
+              <div className="l-feature-visual" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+                <div className="l-mini-map" style={{ flex: 1 }}>
                   <div style={{ position: "absolute", top: 8, left: 10, fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6 }}>
                     Recon Mirror
                   </div>
-                  <div className="l-map-dot" style={{ top: "35%", left: "20%", background: "var(--accent)" }} />
-                  <div className="l-map-dot" style={{ top: "50%", left: "45%", background: "var(--warning)" }} />
-                  <div className="l-map-dot" style={{ top: "30%", left: "70%", background: "var(--critical)" }} />
-                  <div className="l-map-dot" style={{ top: "70%", left: "55%", background: "var(--accent)" }} />
-                  <div className="l-map-dot" style={{ top: "22%", left: "48%", background: "var(--warning)" }} />
-                  <div className="l-map-dot" style={{ top: "60%", left: "30%", background: "var(--critical)" }} />
-                  <div className="l-map-line" style={{ top: "38%", left: "23%", width: 80, height: 2, background: "var(--accent)", transform: "rotate(5deg)", opacity: 0.5 }} />
-                  <div className="l-map-line" style={{ top: "47%", left: "48%", width: 70, height: 2, background: "var(--warning)", transform: "rotate(-20deg)", opacity: 0.5 }} />
-                  <div className="l-map-line" style={{ top: "33%", left: "52%", width: 60, height: 2, background: "var(--critical)", transform: "rotate(15deg)", opacity: 0.5 }} />
+                  {/* Dots spread across full visual area */}
+                  <div className="l-map-dot" style={{ top: "30%", left: "15%", background: "var(--accent)" }} />
+                  <div className="l-map-dot" style={{ top: "60%", left: "25%", background: "var(--accent)" }} />
+                  <div className="l-map-dot" style={{ top: "70%", left: "50%", background: "var(--warning)" }} />
+                  <div className="l-map-dot" style={{ top: "40%", left: "75%", background: "var(--critical)" }} />
+                  <div className="l-map-dot" style={{ top: "85%", left: "65%", background: "var(--accent)" }} />
+                  {/* Lines connecting dots 1→2→3→4 */}
+                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+                    <line x1="15%" y1="30%" x2="25%" y2="60%" stroke="#00d4aa" strokeWidth="1.5" opacity="0.4" />
+                    <line x1="25%" y1="60%" x2="50%" y2="70%" stroke="#00d4aa" strokeWidth="1.5" opacity="0.4" />
+                    <line x1="50%" y1="70%" x2="75%" y2="40%" stroke="#00d4aa" strokeWidth="1.5" opacity="0.4" />
+                  </svg>
                   <div style={{ position: "absolute", bottom: 12, left: 10, right: 10 }}>
                     <div style={{ fontFamily: "var(--font-mono)", fontSize: 7, color: "#00d4aa", opacity: 0.8, marginBottom: 4 }}>PHASE 2 — APPROACH VECTOR</div>
                     <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>Subject departs primary residence at 0615 via established route toward Marina Green waterfront...</div>
@@ -308,16 +311,16 @@ export default function Landing() {
 
             {/* PATTERN LENS */}
             <div className="l-feature-card">
-              <div className="l-feature-visual" style={{ padding: 20 }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 14 }}>
+              <div className="l-feature-visual" style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 20 }}>
                   Pattern Lens
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: "#fff" }}>Morning Run</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>Morning Run</div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--warning)", background: "rgba(245,158,11,0.1)", padding: "2px 6px", borderRadius: 2, border: "1px solid rgba(245,158,11,0.2)" }}>HIGH</div>
                 </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--text-muted)", marginBottom: 4 }}>CONSISTENCY</div>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--text-muted)", marginBottom: 6 }}>CONSISTENCY</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ width: "89%", height: "100%", background: "var(--accent)", borderRadius: 2 }} />
@@ -326,15 +329,13 @@ export default function Landing() {
                   </div>
                 </div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--text-muted)", marginBottom: 8 }}>WEEKLY HEATMAP</div>
-                <div className="l-mini-heatmap">
-                  {/* Row 1 */}
-                  <div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l1" /><div className="l-hm-cell" />
-                  {/* Row 2 */}
-                  <div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell" /><div className="l-hm-cell l1" />
-                  {/* Row 3 */}
-                  <div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l2" /><div className="l-hm-cell l4" /><div className="l-hm-cell l1" /><div className="l-hm-cell" />
-                  {/* Row 4 */}
-                  <div className="l-hm-cell l2" /><div className="l-hm-cell l3" /><div className="l-hm-cell l3" /><div className="l-hm-cell l4" /><div className="l-hm-cell l3" /><div className="l-hm-cell" /><div className="l-hm-cell" />
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[
+                    "rgba(9,188,138,0.75)", "rgba(9,188,138,0.5)", "rgba(9,188,138,0.75)", "rgba(9,188,138,0.3)",
+                    "rgba(9,188,138,0.75)", "rgba(9,188,138,0.15)", "#1a1a1a",
+                  ].map((bg, i) => (
+                    <div key={i} style={{ width: 28, height: 28, borderRadius: 3, background: bg }} />
+                  ))}
                 </div>
               </div>
               <div className="l-feature-content">
@@ -352,23 +353,23 @@ export default function Landing() {
           <div className="l-features-grid-2 l-reveal">
             {/* CROSSWIRE */}
             <div className="l-feature-card">
-              <div className="l-feature-visual" style={{ padding: 24, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 18 }}>
+              <div className="l-feature-visual" style={{ padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "stretch" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 20 }}>
                   CrossWire
                 </div>
-                <div className="l-mini-entity" style={{ marginBottom: 24 }}>
-                  <div className="l-entity-node">JRM</div>
+                <div className="l-mini-entity" style={{ marginBottom: 28 }}>
+                  <div className="l-entity-node" style={{ width: 44, height: 44, fontSize: 11 }}>JRM</div>
                   <div className="l-entity-line">
-                    <div className="l-entity-badge">Shared Breach</div>
+                    <div className="l-entity-badge" style={{ fontSize: 9, padding: "3px 8px", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", borderRadius: 3 }}>SHARED BREACH</div>
                   </div>
-                  <div className="l-entity-node">DKC</div>
+                  <div className="l-entity-node" style={{ width: 44, height: 44, fontSize: 11 }}>DKC</div>
                 </div>
                 <div className="l-mini-entity">
-                  <div className="l-entity-node">JRM</div>
+                  <div className="l-entity-node" style={{ width: 44, height: 44, fontSize: 11 }}>JRM</div>
                   <div className="l-entity-line">
-                    <div className="l-entity-badge">Common Associate</div>
+                    <div className="l-entity-badge" style={{ fontSize: 9, padding: "3px 8px", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", borderRadius: 3 }}>COMMON ASSOCIATE</div>
                   </div>
-                  <div className="l-entity-node">TLW</div>
+                  <div className="l-entity-node" style={{ width: 44, height: 44, fontSize: 11 }}>TLW</div>
                 </div>
               </div>
               <div className="l-feature-content">
