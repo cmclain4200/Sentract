@@ -12,6 +12,7 @@ const CASE_TYPES = [
 
 export default function Dashboard() {
   const [cases, setCases] = useState([]);
+  const [aegisScores, setAegisScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const navigate = useNavigate();
@@ -23,9 +24,31 @@ export default function Dashboard() {
   async function fetchCases() {
     const { data, error } = await supabase
       .from("cases")
-      .select("*, subjects(id, data_completeness)")
+      .select("*, subjects(id, name, data_completeness)")
       .order("created_at", { ascending: false });
-    if (!error) setCases(data || []);
+    if (!error) {
+      setCases(data || []);
+      // Fetch latest Aegis scores for all subjects
+      const subjectIds = (data || []).flatMap((c) => (c.subjects || []).map((s) => s.id));
+      if (subjectIds.length > 0) {
+        const { data: scores } = await supabase
+          .from("assessments")
+          .select("subject_id, score_data")
+          .eq("module", "aegis_score")
+          .in("subject_id", subjectIds)
+          .order("created_at", { ascending: false });
+        if (scores) {
+          const map = {};
+          for (const s of scores) {
+            // First match per subject_id is the latest (ordered desc)
+            if (!map[s.subject_id] && s.score_data?.composite != null) {
+              map[s.subject_id] = s.score_data.composite;
+            }
+          }
+          setAegisScores(map);
+        }
+      }
+    }
     setLoading(false);
   }
 
@@ -56,7 +79,8 @@ export default function Dashboard() {
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-start justify-between mb-10">
+        {/* Header row: title + new case button */}
+        <div className="flex items-start justify-between mb-6">
           <SectionHeader label="Dashboard" title="Cases" />
           <button
             onClick={() => setShowCreate(true)}
@@ -91,29 +115,25 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Stats Bar */}
+            {/* Stats Strip */}
             {stats && (
-              <div className="flex gap-4 mb-8">
-                <div className="surface flex-1 flex items-center gap-4" style={{ padding: "20px 24px" }}>
-                  <Briefcase size={20} color="#09BC8A" />
-                  <div>
-                    <div className="text-[24px] font-bold text-white leading-none">{stats.totalCases}</div>
-                    <div className="text-[11px] font-mono mt-1" style={{ color: "#555" }}>TOTAL CASES</div>
-                  </div>
+              <div className="flex items-center gap-6 pb-5 mb-6" style={{ borderBottom: "1px solid #1e1e1e" }}>
+                <div className="flex items-center gap-2.5">
+                  <Briefcase size={14} color="#09BC8A" />
+                  <span className="text-[15px] font-semibold text-white">{stats.totalCases}</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Total Cases</span>
                 </div>
-                <div className="surface flex-1 flex items-center gap-4" style={{ padding: "20px 24px" }}>
-                  <Users size={20} color="#3b82f6" />
-                  <div>
-                    <div className="text-[24px] font-bold text-white leading-none">{stats.totalSubjects}</div>
-                    <div className="text-[11px] font-mono mt-1" style={{ color: "#555" }}>ACTIVE SUBJECTS</div>
-                  </div>
+                <span style={{ color: "#2a2a2a" }}>·</span>
+                <div className="flex items-center gap-2.5">
+                  <Users size={14} color="#3b82f6" />
+                  <span className="text-[15px] font-semibold text-white">{stats.totalSubjects}</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Active Subjects</span>
                 </div>
-                <div className="surface flex-1 flex items-center gap-4" style={{ padding: "20px 24px" }}>
-                  <BarChart3 size={20} color={stats.avgCompleteness >= 70 ? "#10b981" : stats.avgCompleteness >= 40 ? "#f59e0b" : "#ef4444"} />
-                  <div>
-                    <div className="text-[24px] font-bold text-white leading-none">{stats.avgCompleteness}%</div>
-                    <div className="text-[11px] font-mono mt-1" style={{ color: "#555" }}>AVG COMPLETENESS</div>
-                  </div>
+                <span style={{ color: "#2a2a2a" }}>·</span>
+                <div className="flex items-center gap-2.5">
+                  <BarChart3 size={14} color={stats.avgCompleteness >= 70 ? "#10b981" : stats.avgCompleteness >= 40 ? "#f59e0b" : "#ef4444"} />
+                  <span className="text-[15px] font-semibold text-white">{stats.avgCompleteness}%</span>
+                  <span className="text-[12px] font-mono" style={{ color: "#555" }}>Avg Completeness</span>
                 </div>
               </div>
             )}
@@ -126,39 +146,73 @@ export default function Dashboard() {
                 const avgComp = subCount > 0
                   ? Math.round(subs.reduce((sum, s) => sum + (s.data_completeness || 0), 0) / subCount)
                   : 0;
+                const primarySubject = subs[0];
+                // Best Aegis score across subjects in this case
+                let bestAegis = null;
+                for (const s of subs) {
+                  const score = aegisScores[s.id];
+                  if (score != null && (bestAegis == null || score > bestAegis)) bestAegis = score;
+                }
+
                 return (
                   <button
                     key={c.id}
                     onClick={() => navigate(`/case/${c.id}/profile`)}
-                    className="surface text-left cursor-pointer transition-all duration-200"
-                    style={{ background: "#111", border: "1px solid #1e1e1e", padding: "22px 24px", minHeight: 110 }}
+                    className="surface text-left cursor-pointer transition-all duration-200 flex flex-col"
+                    style={{ background: "#111", border: "1px solid #1e1e1e", padding: "20px 22px", minHeight: 160 }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
                   >
-                    <div className="flex items-center gap-2 mb-3">
+                    {/* Top row: type badge + aegis score */}
+                    <div className="flex items-center justify-between mb-3">
                       <span
                         className="badge"
                         style={{
                           color: typeColor(c.type),
                           background: `${typeColor(c.type)}18`,
                           border: `1px solid ${typeColor(c.type)}35`,
+                          fontSize: 11,
+                          padding: "3px 8px",
                         }}
                       >
                         {c.type}
                       </span>
+                      {bestAegis != null && (
+                        <span
+                          className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                          style={{
+                            color: bestAegis >= 75 ? "#ef4444" : bestAegis >= 55 ? "#f59e0b" : bestAegis >= 35 ? "#3b82f6" : "#09BC8A",
+                            background: bestAegis >= 75 ? "rgba(239,68,68,0.1)" : bestAegis >= 55 ? "rgba(245,158,11,0.1)" : bestAegis >= 35 ? "rgba(59,130,246,0.1)" : "rgba(9,188,138,0.1)",
+                            border: `1px solid ${bestAegis >= 75 ? "rgba(239,68,68,0.2)" : bestAegis >= 55 ? "rgba(245,158,11,0.2)" : bestAegis >= 35 ? "rgba(59,130,246,0.2)" : "rgba(9,188,138,0.2)"}`,
+                          }}
+                        >
+                          {bestAegis}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-white font-semibold text-[16px] mb-1">{c.name}</div>
-                    {c.client_name && (
-                      <div className="text-[13px] mb-1" style={{ color: "#555" }}>{c.client_name}</div>
+
+                    {/* Title */}
+                    <div className="text-white font-semibold text-[16px] mb-1 leading-snug">{c.name}</div>
+
+                    {/* Primary subject name */}
+                    {primarySubject?.name && primarySubject.name !== c.name && (
+                      <div className="text-[13px] mb-1" style={{ color: "#666" }}>{primarySubject.name}</div>
                     )}
+
+                    {/* Description */}
                     {c.description && (
-                      <div className="text-[14px] line-clamp-2" style={{ color: "#666" }}>
+                      <div className="text-[13px] line-clamp-2 mb-auto" style={{ color: "#555" }}>
                         {c.description}
                       </div>
                     )}
-                    <div className="flex items-center gap-3 mt-4">
-                      <span className="text-[12px] font-mono" style={{ color: "#444" }}>
-                        {subCount} subject{subCount !== 1 ? "s" : ""}
+
+                    {/* Spacer to push bottom row down */}
+                    <div className="flex-1" />
+
+                    {/* Bottom row: subjects, completeness bar, date */}
+                    <div className="flex items-center gap-3 mt-4 pt-3" style={{ borderTop: "1px solid #1a1a1a" }}>
+                      <span className="text-[11px] font-mono shrink-0" style={{ color: "#555" }}>
+                        {subCount} subj
                       </span>
                       {subCount > 0 && (
                         <div className="flex items-center gap-1.5 flex-1">
@@ -172,10 +226,10 @@ export default function Dashboard() {
                               }}
                             />
                           </div>
-                          <span className="text-[11px] font-mono" style={{ color: "#555" }}>{avgComp}%</span>
+                          <span className="text-[10px] font-mono" style={{ color: "#555" }}>{avgComp}%</span>
                         </div>
                       )}
-                      <span className="text-[12px] font-mono" style={{ color: "#444" }}>
+                      <span className="text-[11px] font-mono shrink-0" style={{ color: "#444" }}>
                         {new Date(c.created_at).toLocaleDateString()}
                       </span>
                     </div>
