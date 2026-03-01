@@ -23,6 +23,10 @@ const CASE_TYPES = [
   { value: "CI", label: "Corporate Intel", color: "#3b82f6" },
 ];
 
+function typeColor(type) {
+  return CASE_TYPES.find((t) => t.value === type)?.color || "#888";
+}
+
 export default function Dashboard() {
   const [cases, setCases] = useState([]);
   const [aegisScores, setAegisScores] = useState({});
@@ -211,10 +215,6 @@ export default function Dashboard() {
     await supabase.from("cases").update({ name: newName.trim() }).eq("id", id);
     setCases((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName.trim() } : c)));
     setRenameCase(null);
-  }
-
-  function typeColor(type) {
-    return CASE_TYPES.find((t) => t.value === type)?.color || "#888";
   }
 
   const hiddenCount = cases.filter((c) => c.status === "archived").length;
