@@ -7,11 +7,13 @@ import { calculateCompleteness } from "../lib/profileCompleteness";
 import { calculateAegisScore, buildRemediationOptions, simulateRemediation } from "../lib/aegisScore";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { getBenchmarkData } from "../lib/enrichment/benchmarking";
 
 export default function AegisScore() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { can } = useOrg();
   const profileData = subject?.profile_data || {};
   const completeness = calculateCompleteness(profileData);
 
@@ -188,14 +190,16 @@ export default function AegisScore() {
             {/* Radar Chart */}
             <AegisRadarChart displayScore={displayScore} previousScore={savedScores[0]?.score_data || null} />
 
-            <button
-              onClick={saveScore}
-              disabled={saving}
-              className="mt-3 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
-              style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#888" }}
-            >
-              <Save size={11} />{saving ? "Saving..." : "Save Snapshot"}
-            </button>
+            {can("run_assessment") && (
+              <button
+                onClick={saveScore}
+                disabled={saving}
+                className="mt-3 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
+                style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#888" }}
+              >
+                <Save size={11} />{saving ? "Saving..." : "Save Snapshot"}
+              </button>
+            )}
           </div>
 
           {/* Right: Factor Bars */}
@@ -402,13 +406,15 @@ export default function AegisScore() {
                       <span className="text-[16px] font-bold" style={{ color: sTier.color }}>{score}</span>
                       <span className="text-[11px]" style={{ color: sTier.color }}>{level}</span>
                       <div className="flex-1" />
-                      <button
-                        onClick={() => deleteScore(s.id)}
-                        className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                        style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
-                      >
-                        <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} />
-                      </button>
+                      {can("delete_assessment") && (
+                        <button
+                          onClick={() => deleteScore(s.id)}
+                          className="text-[10px] px-2 py-1 rounded cursor-pointer"
+                          style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
+                        >
+                          <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} />
+                        </button>
+                      )}
                     </div>
                   );
                 })}

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { OrgProvider } from "./contexts/OrgContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { createSentractEngine, EngineProvider } from "./engine";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -12,6 +13,7 @@ import CaseView from "./pages/CaseView";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/Settings";
+import TeamManagement from "./pages/TeamManagement";
 import Profile from "./features/Profile";
 import ReconMirror from "./features/ReconMirror";
 import AegisScore from "./features/AegisScore";
@@ -26,6 +28,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <OrgProvider>
         <NotificationProvider>
         <EngineProvider value={engine}>
         <Routes>
@@ -42,6 +45,7 @@ export default function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/team" element={<TeamManagement />} />
             <Route path="/case/:caseId" element={<CaseView />}>
               <Route index element={<Navigate to="profile" replace />} />
               <Route path="profile" element={<Profile />} />
@@ -57,6 +61,7 @@ export default function App() {
         </Routes>
         </EngineProvider>
         </NotificationProvider>
+        </OrgProvider>
       </AuthProvider>
     </BrowserRouter>
   );

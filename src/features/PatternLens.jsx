@@ -6,6 +6,7 @@ import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useEngine, buildHeatmapFromRoutines } from "../engine";
 
@@ -41,6 +42,7 @@ function threatLevel(consistency) {
 export default function PatternLens() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { can } = useOrg();
   const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
@@ -299,22 +301,24 @@ export default function PatternLens() {
           /* AI Analysis Mode */
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-3">
-              <button
-                onClick={generateAiAnalysis}
-                disabled={isGenerating}
-                className="px-5 py-2.5 text-[13px] font-semibold tracking-wide rounded-md flex items-center gap-2.5 transition-all duration-200 cursor-pointer"
-                style={{
-                  background: isGenerating ? "#0d0d0d" : "#09BC8A",
-                  color: isGenerating ? "#09BC8A" : "#000",
-                  border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
-                }}
-              >
-                {isGenerating ? (
+              {can("run_assessment") && (
+                <button
+                  onClick={generateAiAnalysis}
+                  disabled={isGenerating}
+                  className="px-5 py-2.5 text-[13px] font-semibold tracking-wide rounded-md flex items-center gap-2.5 transition-all duration-200 cursor-pointer"
+                  style={{
+                    background: isGenerating ? "#0d0d0d" : "#09BC8A",
+                    color: isGenerating ? "#09BC8A" : "#000",
+                    border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
+                  }}
+                >
+                  {isGenerating ? (
                   <><span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" /><span className="ml-1">Analyzing...</span></>
                 ) : (
-                  <><Zap size={14} />Generate AI Pattern Analysis</>
-                )}
-              </button>
+                    <><Zap size={14} />Generate AI Pattern Analysis</>
+                  )}
+                </button>
+              )}
               {aiOutput && !isGenerating && (
                 <button
                   onClick={() => navigator.clipboard.writeText(aiOutput)}
@@ -380,10 +384,12 @@ export default function PatternLens() {
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => loadAnalysis(a)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
                         style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A" }}>View</button>
-                      <button onClick={() => deleteAnalysis(a.id)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                        style={{ background: "transparent", border: "1px solid #333", color: "#555" }}>
-                        <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
-                      </button>
+                      {can("delete_assessment") && (
+                        <button onClick={() => deleteAnalysis(a.id)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
+                          style={{ background: "transparent", border: "1px solid #333", color: "#555" }}>
+                          <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

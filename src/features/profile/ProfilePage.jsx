@@ -5,6 +5,7 @@ import SectionHeader from "../../components/common/SectionHeader";
 import { EMPTY_PROFILE } from "../../lib/profileSchema";
 import { calculateCompleteness } from "../../lib/profileCompleteness";
 import { useAuth } from "../../contexts/AuthContext";
+import { useOrg } from "../../contexts/OrgContext";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { useToast } from "../../components/Toast";
 import { deepMerge } from "./utils";
@@ -44,8 +45,10 @@ const TABS = [
 export default function ProfilePage() {
   const { caseData, subjects, subject, refreshSubject } = useOutletContext();
   const { user } = useAuth();
+  const { can } = useOrg();
   const { notify } = useNotifications();
   const { showToast, ToastContainer } = useToast();
+  const readOnly = !can("edit_subject");
 
   const [profile, setProfile] = useState(() => {
     const base = JSON.parse(JSON.stringify(EMPTY_PROFILE));
@@ -114,12 +117,13 @@ export default function ProfilePage() {
   useEffect(() => { anomalyFetched.current = false; setAnomalies([]); }, [subject?.id]);
 
   const updateProfile = useCallback((updater) => {
+    if (readOnly) return;
     setProfile((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       autoSave(next, subject);
       return next;
     });
-  }, [autoSave, subject]);
+  }, [autoSave, subject, readOnly]);
 
   async function handleSaveNow() {
     await flushSave(profile, refreshSubject);
@@ -186,13 +190,15 @@ export default function ProfilePage() {
           {saveStatus === "error" && (
             <span className="text-[12px] font-mono" style={{ color: "#ef4444" }}>Save failed</span>
           )}
-          <button
-            onClick={handleSaveNow}
-            className="px-4 py-2 rounded text-sm font-semibold cursor-pointer"
-            style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}
-          >
-            Save Changes
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleSaveNow}
+              className="px-4 py-2 rounded text-sm font-semibold cursor-pointer"
+              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}
+            >
+              Save Changes
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, LogOut, Settings, ArrowLeft } from "lucide-react";
+import { ChevronDown, LogOut, Settings, ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { useNavigate, useMatch } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import AlertBell from "./AlertBell";
@@ -17,6 +18,7 @@ function typeColor(type) {
 
 export default function TopBar() {
   const { user, profile, signOut } = useAuth();
+  const { org, can } = useOrg();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -34,7 +36,6 @@ export default function TopBar() {
     supabase
       .from("cases")
       .select("id, name, type, status")
-      .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .then(({ data }) => {
         if (data) setCases(data);
@@ -245,9 +246,9 @@ export default function TopBar() {
                 <div className="text-[13px] font-mono" style={{ color: "#999" }}>
                   {user?.email}
                 </div>
-                {profile?.organization && (
+                {org?.name && (
                   <div className="text-[12px] mt-0.5" style={{ color: "#555" }}>
-                    {profile.organization}
+                    {org.name}
                   </div>
                 )}
               </div>
@@ -261,6 +262,18 @@ export default function TopBar() {
                 <Settings size={15} color="#888" />
                 <span className="text-[14px]" style={{ color: "#888" }}>
                   Settings
+                </span>
+              </button>
+              <button
+                onClick={() => { navigate("/settings/team"); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                style={{ background: "transparent", border: "none", minHeight: 42, padding: "0 16px" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <Users size={15} color="#888" />
+                <span className="text-[14px]" style={{ color: "#888" }}>
+                  Team
                 </span>
               </button>
               <button

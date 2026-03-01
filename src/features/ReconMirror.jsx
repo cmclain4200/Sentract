@@ -10,6 +10,7 @@ import { countDataPoints } from "../lib/profileToPrompt";
 import { geocodeProfileLocations, formatGeocodedLocations } from "../lib/geocode";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useEngine, ADVERSARY_TYPES, OBJECTIVES, SOPHISTICATION_LEVELS } from "../engine";
 import SourceLinkedNarrative from "../components/recon/SourceLinkedNarrative";
@@ -32,6 +33,7 @@ const DELIMITER = "---SCENARIO_JSON---";
 export default function ReconMirror() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { can } = useOrg();
   const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
@@ -420,22 +422,24 @@ export default function ReconMirror() {
               sophistication={SOPHISTICATION_LEVELS.find((s) => s.value === sophistication)?.label || sophistication}
             />
 
-            <button
-              onClick={generate}
-              disabled={isGenerating}
-              className="w-full py-3 text-[13px] font-semibold tracking-wide rounded-md flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
-              style={{
-                background: isGenerating ? "#0d0d0d" : "#09BC8A",
-                color: isGenerating ? "#09BC8A" : "#000",
-                border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
-              }}
-            >
-              {isGenerating ? (
-                <><span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" /><span className="ml-1">Generating...</span></>
-              ) : (
-                <><Crosshair size={15} />Generate Assessment</>
-              )}
-            </button>
+            {can("run_assessment") && (
+              <button
+                onClick={generate}
+                disabled={isGenerating}
+                className="w-full py-3 text-[13px] font-semibold tracking-wide rounded-md flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
+                style={{
+                  background: isGenerating ? "#0d0d0d" : "#09BC8A",
+                  color: isGenerating ? "#09BC8A" : "#000",
+                  border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
+                }}
+              >
+                {isGenerating ? (
+                  <><span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" /><span className="ml-1">Generating...</span></>
+                ) : (
+                  <><Crosshair size={15} />Generate Assessment</>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Data Points */}
@@ -492,13 +496,15 @@ export default function ReconMirror() {
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => deleteAssessment(a.id)}
-                          className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                          style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
-                        >
-                          <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
-                        </button>
+                        {can("delete_assessment") && (
+                          <button
+                            onClick={() => deleteAssessment(a.id)}
+                            className="text-[10px] px-2 py-1 rounded cursor-pointer"
+                            style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
+                          >
+                            <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -585,7 +591,7 @@ export default function ReconMirror() {
                       {isShieldMode ? 'Exit Shield' : 'Shield Mode'}
                     </button>
                     <ActionBtn icon={Copy} label="Copy" onClick={() => navigator.clipboard.writeText(narrative)} />
-                    <ActionBtn icon={RefreshCw} label="Regenerate" onClick={generate} />
+                    {can("run_assessment") && <ActionBtn icon={RefreshCw} label="Regenerate" onClick={generate} />}
                   </>
                 )}
               </div>

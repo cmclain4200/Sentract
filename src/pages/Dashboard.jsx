@@ -5,6 +5,7 @@ import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import SectionHeader from "../components/common/SectionHeader";
 import BulkImport from "../features/import/BulkImport";
 import { CASE_TEMPLATES } from "../lib/caseTemplates";
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { can, myTeams } = useOrg();
 
   useEffect(() => {
     fetchCases();
@@ -361,24 +363,28 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-              style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "12px 22px", minHeight: 44 }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
-            >
-              <Upload size={17} />
-              Import
-            </button>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
-            >
-              <Plus size={17} />
-              New Case
-            </button>
+            {can("create_case") && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+                style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "12px 22px", minHeight: 44 }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+              >
+                <Upload size={17} />
+                Import
+              </button>
+            )}
+            {can("create_case") && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+                style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
+              >
+                <Plus size={17} />
+                New Case
+              </button>
+            )}
           </div>
         </div>
 
@@ -635,16 +641,18 @@ export default function Dashboard() {
                                 {isHidden ? <Eye size={14} /> : <EyeOff size={14} />}
                                 <span className="text-[13px]">{isHidden ? "Unhide" : "Hide"}</span>
                               </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(c); setCaseMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                                style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#ef4444" }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                              >
-                                <Trash2 size={14} />
-                                <span className="text-[13px]">Delete</span>
-                              </button>
+                              {can("delete_case") && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(c); setCaseMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                                  style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#ef4444" }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                >
+                                  <Trash2 size={14} />
+                                  <span className="text-[13px]">Delete</span>
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -893,6 +901,7 @@ export default function Dashboard() {
             navigate(`/case/${newCase.id}/profile`);
           }}
           userId={user?.id}
+          teams={myTeams()}
         />
       )}
 
@@ -904,6 +913,7 @@ export default function Dashboard() {
             if (caseId) navigate(`/case/${caseId}/profile`);
             else fetchCases();
           }}
+          teams={myTeams()}
         />
       )}
 
@@ -1004,11 +1014,12 @@ function RenameCaseModal({ caseData, onClose, onRename }) {
   );
 }
 
-function CreateCaseModal({ onClose, onCreated, userId }) {
+function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [type, setType] = useState("EP");
   const [description, setDescription] = useState("");
+  const [teamId, setTeamId] = useState(teams[0]?.id || "");
   const [autoCreateSubject, setAutoCreateSubject] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1026,6 +1037,7 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
         type,
         description: description || null,
         client_name: clientName || null,
+        team_id: teamId || null,
       })
       .select()
       .single();
@@ -1034,6 +1046,15 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
       setError(err.message);
       setLoading(false);
       return;
+    }
+
+    // Auto-create case assignment for the creator
+    if (data && userId) {
+      await supabase.from("case_assignments").insert({
+        user_id: userId,
+        case_id: data.id,
+        assigned_by: userId,
+      });
     }
 
     if (autoCreateSubject && data) {
@@ -1197,6 +1218,21 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
                   placeholder="Optional description..."
                 />
               </div>
+              {teams.length > 1 && (
+                <div>
+                  <label className="sub-label block mb-2">Team</label>
+                  <select
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="w-full rounded text-[15px] text-white outline-none"
+                    style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"

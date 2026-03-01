@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 const STEPS = ["Upload", "Map", "Preview", "Import"];
 
-export default function BulkImport({ onClose, onImported }) {
+export default function BulkImport({ onClose, onImported, teams = [] }) {
   const [step, setStep] = useState(0);
   const [fileType, setFileType] = useState(null);
   const [rawData, setRawData] = useState(null);
@@ -17,6 +17,7 @@ export default function BulkImport({ onClose, onImported }) {
   const [importResult, setImportResult] = useState(null);
   const [targetCaseId, setTargetCaseId] = useState("new");
   const [newCaseName, setNewCaseName] = useState("Imported Data");
+  const [teamId, setTeamId] = useState(teams[0]?.id || "");
   const [cases, setCases] = useState([]);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function BulkImport({ onClose, onImported }) {
       if (targetCaseId === "new") {
         const { data: newCase, error: caseErr } = await supabase
           .from("cases")
-          .insert({ name: newCaseName, type: "CI" })
+          .insert({ name: newCaseName, type: "CI", team_id: teamId || null })
           .select()
           .single();
 
