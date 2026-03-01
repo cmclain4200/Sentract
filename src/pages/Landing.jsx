@@ -65,8 +65,7 @@ export default function Landing() {
       <nav className={`l-nav${navScrolled ? " scrolled" : ""}`}>
         <div className="l-nav-inner">
           <a href="#" className="l-nav-logo">
-            <img src="/sentract-logo.png" alt="Sentract" />
-            <span>Sentract</span>
+            <img src="/sentract-logo-dark.png" alt="Sentract" />
           </a>
           <div className="l-nav-links">
             <a href="#features">Features</a>
@@ -554,8 +553,7 @@ export default function Landing() {
           <div className="l-footer-grid">
             <div>
               <div className="l-footer-brand-name">
-                <img src="/sentract-logo.png" alt="Sentract" />
-                <span>Sentract</span>
+                <img src="/sentract-logo-dark.png" alt="Sentract" />
               </div>
               <div className="l-footer-tagline">
                 Intelligence analysis platform for security professionals. From investigation

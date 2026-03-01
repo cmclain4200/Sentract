@@ -36,13 +36,10 @@ export default function TopBar() {
         style={{ background: "transparent", border: "none", padding: 0 }}
       >
         <img
-          src="/sentract-logo.png"
+          src="/sentract-logo-dark.png"
           alt="Sentract"
-          style={{ width: 24, height: 24, filter: "invert(1)" }}
+          style={{ height: 24 }}
         />
-        <span className="text-[18px] font-semibold text-white tracking-tight">
-          Sentract
-        </span>
       </button>
 
       <div className="flex items-center gap-6">

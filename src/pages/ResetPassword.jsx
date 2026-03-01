@@ -73,9 +73,8 @@ export default function ResetPassword() {
     <div className="h-full flex items-center justify-center" style={{ background: "#0a0a0a" }}>
       <div className="w-full" style={{ maxWidth: 440 }}>
         {/* Logo */}
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <img src="/sentract-logo.png" alt="Sentract" style={{ width: 32, height: 32, filter: "invert(1)" }} />
-          <span className="text-[24px] font-semibold text-white tracking-tight">Sentract</span>
+        <div className="flex items-center mb-8 justify-center">
+          <img src="/sentract-logo-dark.png" alt="Sentract" style={{ height: 36 }} />
         </div>
 
         <div className="surface" style={{ padding: "36px 40px" }}>
