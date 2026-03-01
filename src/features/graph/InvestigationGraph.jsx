@@ -41,12 +41,19 @@ const TYPE_COLORS = {
   platform: "#666",
 };
 
+const SCOPE_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "this_case", label: "This Case" },
+  { value: "other_cases", label: "Cross-Case" },
+];
+
 export default function InvestigationGraph() {
   const { subject, caseData } = useOutletContext();
   const [allSubjects, setAllSubjects] = useState([]);
   const [overlaps, setOverlaps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [scope, setScope] = useState("all");
   const containerRef = useRef(null);
   const [dims, setDims] = useState({ width: 800, height: 500 });
 
@@ -71,9 +78,16 @@ export default function InvestigationGraph() {
     return () => obs.disconnect();
   }, []);
 
-  const { nodes, links } = buildGraphData(subject, allSubjects, overlaps);
+  const currentCaseId = caseData?.id;
+  const filteredOverlaps = overlaps.filter((o) => {
+    if (scope === "this_case") return o.subject.case_id === currentCaseId;
+    if (scope === "other_cases") return o.subject.case_id !== currentCaseId;
+    return true;
+  });
+
+  const { nodes, links } = buildGraphData(subject, allSubjects, filteredOverlaps);
   const selectedNode = nodes.find((n) => n.id === selectedId);
-  const selectedOverlap = overlaps.find((o) => o.subject.id === selectedId);
+  const selectedOverlap = filteredOverlaps.find((o) => o.subject.id === selectedId);
 
   // Group matches by type for the detail panel
   const groupedMatches = {};
@@ -100,7 +114,25 @@ export default function InvestigationGraph() {
 
   return (
     <div className="p-8 fade-in h-full flex flex-col">
-      <h1 className="page-title mb-6">Link Graph</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="page-title">Link Graph</h1>
+        {!loading && overlaps.length > 0 && (
+          <div className="view-toggle">
+            {SCOPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={scope === opt.value ? "active" : ""}
+                onClick={() => {
+                  setScope(opt.value);
+                  setSelectedId(null);
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex items-center gap-2 justify-center py-20">
@@ -108,13 +140,22 @@ export default function InvestigationGraph() {
           <span className="pulse-dot" />
           <span className="pulse-dot" />
         </div>
-      ) : overlaps.length === 0 ? (
+      ) : filteredOverlaps.length === 0 ? (
         <div className="surface p-8 text-center">
           <Network size={32} color="#333" className="mx-auto mb-3" />
-          <div className="text-[15px] text-white font-semibold mb-2">No cross-case connections</div>
+          <div className="text-[15px] text-white font-semibold mb-2">
+            {overlaps.length === 0
+              ? "No connections found"
+              : scope === "this_case"
+                ? "No connections within this case"
+                : "No cross-case connections"}
+          </div>
           <div className="text-[13px]" style={{ color: "#555" }}>
-            Connections will appear when subjects share organizations, breaches, locations, or other
-            data points.
+            {overlaps.length === 0
+              ? "Connections will appear when subjects share organizations, breaches, locations, or other data points."
+              : scope === "this_case"
+                ? "No other subjects in this case share data points with the current subject."
+                : "No subjects in other cases share data points with the current subject."}
           </div>
         </div>
       ) : (

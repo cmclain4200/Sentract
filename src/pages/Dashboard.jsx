@@ -904,6 +904,7 @@ export default function Dashboard() {
             if (caseId) navigate(`/case/${caseId}/profile`);
             else fetchCases();
           }}
+          userId={user?.id}
         />
       )}
 
