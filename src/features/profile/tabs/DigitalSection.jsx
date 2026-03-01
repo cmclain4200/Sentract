@@ -154,6 +154,7 @@ function BrokerCheckPanel({ profile, update }) {
 
   const [brokerLinks, setBrokerLinks] = useState([]);
   const [generated, setGenerated] = useState(false);
+  const [added, setAdded] = useState(false);
 
   function handleGenerate() {
     const links = generateBrokerCheckUrls(fullName, firstState);
@@ -163,14 +164,16 @@ function BrokerCheckPanel({ profile, update }) {
 
   function markBroker(idx, status) {
     setBrokerLinks((prev) => prev.map((b, i) => (i === idx ? { ...b, status } : b)));
+    setAdded(false);
   }
 
   function addResultsToProfile() {
+    const checkedLinks = brokerLinks.filter((b) => b.status !== "unchecked");
+    if (checkedLinks.length === 0) return;
     update((p) => {
       const existing = p.digital?.data_broker_listings || [];
       const newListings = [...existing];
-      for (const b of brokerLinks) {
-        if (b.status === "unchecked") continue;
+      for (const b of checkedLinks) {
         const exists = existing.some((e) => e.broker?.toLowerCase() === b.name.toLowerCase());
         if (!exists) {
           newListings.push({
@@ -184,6 +187,7 @@ function BrokerCheckPanel({ profile, update }) {
       }
       return { ...p, digital: { ...p.digital, data_broker_listings: newListings } };
     });
+    setAdded(true);
   }
 
   const checkedCount = brokerLinks.filter((b) => b.status !== "unchecked").length;
@@ -236,9 +240,15 @@ function BrokerCheckPanel({ profile, update }) {
           <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid #1e1e1e" }}>
             <span className="text-[11px]" style={{ color: "#555" }}>{checkedCount} of {brokerLinks.length} checked</span>
             {checkedCount > 0 && (
-              <button onClick={addResultsToProfile} className="text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}>
-                Add All Results to Profile
-              </button>
+              added ? (
+                <span className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5" style={{ color: "#10b981" }}>
+                  <Check size={12} /> Added to Profile
+                </span>
+              ) : (
+                <button onClick={addResultsToProfile} className="text-[11px] font-mono px-3 py-1.5 rounded cursor-pointer" style={{ background: "transparent", border: "1px solid rgba(9, 188, 138,0.3)", color: "#09BC8A" }}>
+                  Add All Results to Profile
+                </button>
+              )
             )}
           </div>
         </div>
