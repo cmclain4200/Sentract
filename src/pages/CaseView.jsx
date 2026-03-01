@@ -143,7 +143,7 @@ export default function CaseView() {
 
   return (
     <div className="h-full flex">
-      <Sidebar caseName={caseData.name} caseType={caseData.type} />
+      <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Subject selector bar */}
         {subjects.length > 0 && (

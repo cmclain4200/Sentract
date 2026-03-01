@@ -56,7 +56,7 @@ export default function ProfilePage() {
   // Hooks
   const { saveStatus, autoSave, flushSave, updateRef } = useAutoSave(subject?.id, user?.id, showToast);
   const { enriching, setEnriching, runAll } = useEnrichment();
-  const { uploadState, uploadError, extractionResult, handleFileUpload, applyExtraction, discardExtraction, reset: resetUpload, setUploadState } = useFileUpload();
+  const { uploadState, uploadError, extractionResult, handleFileUpload, applyExtraction, discardExtraction, setUploadState } = useFileUpload(subject?.id);
 
   // Reset all state when subject changes
   useEffect(() => {
@@ -69,7 +69,6 @@ export default function ProfilePage() {
     setAiFields(new Set());
     setShowUpload(true);
     setShowBatchEnrich(false);
-    resetUpload();
   }, [subject?.id]);
 
   // Keep ref in sync so beforeunload can access latest

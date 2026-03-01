@@ -11,7 +11,7 @@ const modules = [
   { key: "graph", label: "Link Graph", icon: Network, path: "graph" },
 ];
 
-export default function Sidebar({ caseName, caseType }) {
+export default function Sidebar() {
   return (
     <div
       className="w-[240px] h-full flex flex-col shrink-0"
@@ -40,19 +40,8 @@ export default function Sidebar({ caseName, caseType }) {
         ))}
       </div>
 
-      {/* Case info at bottom */}
+      {/* Back to all cases */}
       <div className="px-4 py-4" style={{ borderTop: "1px solid #1a1a1a" }}>
-        {caseName && (
-          <div className="mb-3">
-            <div className="sub-label mb-1" style={{ color: "#444" }}>Case</div>
-            <div className="text-[13px] text-white truncate">{caseName}</div>
-            {caseType && (
-              <span className="badge badge-accent mt-1" style={{ fontSize: 11 }}>
-                {caseType}
-              </span>
-            )}
-          </div>
-        )}
         <Link
           to="/dashboard"
           className="flex items-center gap-2 text-[13px] no-underline transition-colors"
