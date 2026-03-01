@@ -5,10 +5,17 @@ import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import SectionHeader from "../components/common/SectionHeader";
 import BulkImport from "../features/import/BulkImport";
 import { CASE_TEMPLATES } from "../lib/caseTemplates";
 import { calculateCasePriority, PRIORITY_COLORS } from "../lib/casePriority";
+import OwnerStatsPanel from "../components/dashboard/OwnerStatsPanel";
+import OwnerAnalyticsPanel from "../components/dashboard/OwnerAnalyticsPanel";
+import ManagerWorkloadPanel from "../components/dashboard/ManagerWorkloadPanel";
+import ApprovalQueue from "../components/dashboard/ApprovalQueue";
+import ReviewQueue from "../components/dashboard/ReviewQueue";
+import ClientPortal from "../components/dashboard/ClientPortal";
 
 const CASE_TYPES = [
   { value: "EP", label: "Executive Protection", color: "#09BC8A" },
@@ -33,10 +40,24 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { can, isRole, isOrgOwner, myTeams } = useOrg();
+  const [assignedCaseIds, setAssignedCaseIds] = useState(null);
 
   useEffect(() => {
     fetchCases();
   }, []);
+
+  // For analysts: fetch their case assignments to filter visible cases
+  useEffect(() => {
+    if (!user?.id || !isRole("analyst")) return;
+    supabase
+      .from("case_assignments")
+      .select("case_id")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) setAssignedCaseIds(new Set(data.map((a) => a.case_id)));
+      });
+  }, [user?.id, isRole]);
 
   async function fetchCases() {
     const { data, error } = await supabase
@@ -198,7 +219,10 @@ export default function Dashboard() {
 
   const hiddenCount = cases.filter((c) => c.status === "archived").length;
   const filteredByStatus = statusFilter === "all" ? cases : statusFilter === "closed" ? cases.filter((c) => c.status === "closed") : cases.filter((c) => c.status !== "closed");
-  const visibleCases = showHidden ? filteredByStatus : filteredByStatus.filter((c) => c.status !== "archived");
+  const filteredByRole = isRole("analyst") && assignedCaseIds
+    ? filteredByStatus.filter((c) => assignedCaseIds.has(c.id))
+    : filteredByStatus;
+  const visibleCases = showHidden ? filteredByRole : filteredByRole.filter((c) => c.status !== "archived");
 
   // Priority map for cases
   const casePriorities = useMemo(() => {
@@ -348,39 +372,94 @@ export default function Dashboard() {
     return "rgba(9,188,138,0.25)";
   }
 
+  // Client portal - completely different view
+  if (isRole("client")) {
+    return <ClientPortal />;
+  }
+
+  // Reviewer primary view
+  if (isRole("reviewer")) {
+    return (
+      <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
+        <ReviewQueue />
+        <div className="mt-8">
+          <SectionHeader label="Reference" title="Cases (Read-Only)" />
+          <div className="mt-4 space-y-3">
+            {cases.filter((c) => c.status !== "archived").map((c) => (
+              <div
+                key={c.id}
+                className="surface flex items-center gap-4 cursor-pointer transition-all"
+                style={{ padding: "14px 20px" }}
+                onClick={() => navigate(`/case/${c.id}/profile`)}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
+              >
+                <Briefcase size={14} color={CASE_TYPES.find((t) => t.value === c.type)?.color || "#888"} />
+                <div className="flex-1">
+                  <div className="text-[14px] text-white">{c.name}</div>
+                  <div className="text-[11px] font-mono" style={{ color: "#555" }}>
+                    {c.subjects?.length || 0} subject{(c.subjects?.length || 0) !== 1 ? "s" : ""}
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded"
+                  style={{
+                    color: c.status === "active" ? "#09BC8A" : "#ef4444",
+                    background: c.status === "active" ? "rgba(9,188,138,0.1)" : "rgba(239,68,68,0.1)",
+                  }}
+                >
+                  {c.status?.toUpperCase()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
       <div>
         {/* Header row: title + toggle + new case button */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <SectionHeader label="Dashboard" title="Cases" />
+            <SectionHeader label="Dashboard" title={isRole("analyst") ? "My Cases" : "Cases"} />
             <div className="view-toggle" style={{ marginTop: 24 }}>
               <button className={view === "cases" ? "active" : ""} onClick={() => setView("cases")}>Cases</button>
               <button className={view === "subjects" ? "active" : ""} onClick={() => setView("subjects")}>Subjects</button>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-              style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "12px 22px", minHeight: 44 }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
-            >
-              <Upload size={17} />
-              Import
-            </button>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
-            >
-              <Plus size={17} />
-              New Case
-            </button>
+            {can("create_case") && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+                style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "12px 22px", minHeight: 44 }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+              >
+                <Upload size={17} />
+                Import
+              </button>
+            )}
+            {can("create_case") && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+                style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
+              >
+                <Plus size={17} />
+                New Case
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Role-specific panels */}
+        {!loading && isOrgOwner() && <OwnerStatsPanel cases={cases} />}
+        {!loading && isOrgOwner() && <OwnerAnalyticsPanel />}
+        {!loading && isRole("team_manager") && <ManagerWorkloadPanel />}
 
         {loading ? (
           <div className="flex items-center gap-2 justify-center py-20">
@@ -635,16 +714,18 @@ export default function Dashboard() {
                                 {isHidden ? <Eye size={14} /> : <EyeOff size={14} />}
                                 <span className="text-[13px]">{isHidden ? "Unhide" : "Hide"}</span>
                               </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(c); setCaseMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                                style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#ef4444" }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                              >
-                                <Trash2 size={14} />
-                                <span className="text-[13px]">Delete</span>
-                              </button>
+                              {can("delete_case") && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(c); setCaseMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                                  style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#ef4444" }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                >
+                                  <Trash2 size={14} />
+                                  <span className="text-[13px]">Delete</span>
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -834,6 +915,9 @@ export default function Dashboard() {
             )}
           </>
         )}
+
+        {/* Manager approval queue */}
+        {isRole("team_manager") && <ApprovalQueue />}
       </div>
 
       {/* Close case menu on outside click */}
@@ -893,6 +977,7 @@ export default function Dashboard() {
             navigate(`/case/${newCase.id}/profile`);
           }}
           userId={user?.id}
+          teams={myTeams()}
         />
       )}
 
@@ -905,6 +990,7 @@ export default function Dashboard() {
             else fetchCases();
           }}
           userId={user?.id}
+          teams={myTeams()}
         />
       )}
 
@@ -1005,11 +1091,12 @@ function RenameCaseModal({ caseData, onClose, onRename }) {
   );
 }
 
-function CreateCaseModal({ onClose, onCreated, userId }) {
+function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [type, setType] = useState("EP");
   const [description, setDescription] = useState("");
+  const [teamId, setTeamId] = useState(teams[0]?.id || "");
   const [autoCreateSubject, setAutoCreateSubject] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1027,6 +1114,7 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
         type,
         description: description || null,
         client_name: clientName || null,
+        team_id: teamId || null,
       })
       .select()
       .single();
@@ -1035,6 +1123,15 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
       setError(err.message);
       setLoading(false);
       return;
+    }
+
+    // Auto-create case assignment for the creator
+    if (data && userId) {
+      await supabase.from("case_assignments").insert({
+        user_id: userId,
+        case_id: data.id,
+        assigned_by: userId,
+      });
     }
 
     if (autoCreateSubject && data) {
@@ -1198,6 +1295,21 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
                   placeholder="Optional description..."
                 />
               </div>
+              {teams.length > 1 && (
+                <div>
+                  <label className="sub-label block mb-2">Team</label>
+                  <select
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="w-full rounded text-[15px] text-white outline-none"
+                    style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"

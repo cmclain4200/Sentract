@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
-import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
+import { Plus, User, Users, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
 import { generateReportV2 } from "../lib/reportExportV2";
@@ -8,13 +8,16 @@ import { REPORT_TEMPLATES } from "../lib/reportTemplates";
 import { syncRelationships } from "../lib/relationshipSync";
 import { downloadStixBundle } from "../lib/stixExport";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import Sidebar from "../components/Sidebar";
 import CaseChat from "../features/chat/CaseChat";
 import CaseClosureModal from "../components/CaseClosureModal";
+import CaseAssignmentModal from "../components/CaseAssignmentModal";
 
 export default function CaseView() {
   const { caseId } = useParams();
   const { user } = useAuth();
+  const { can, role, isRole } = useOrg();
   const [caseData, setCaseData] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [activeSubject, setActiveSubject] = useState(null);
@@ -30,6 +33,8 @@ export default function CaseView() {
   const [reportTemplate, setReportTemplate] = useState("full");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showAssignment, setShowAssignment] = useState(false);
+  const [orgMembers, setOrgMembers] = useState([]);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -212,55 +217,63 @@ export default function CaseView() {
                     className="absolute left-0 top-full mt-1 w-[170px] rounded-md overflow-hidden z-50 fade-in"
                     style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
                   >
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRenameSubject(s); setSubjectMenu(null); }}
-                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <Pencil size={13} />
-                      <span className="text-[13px]">Rename</span>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); s.hidden ? unhideSubject(s.id) : hideSubject(s.id); }}
-                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      {s.hidden ? <Eye size={13} /> : <EyeOff size={13} />}
-                      <span className="text-[13px]">{s.hidden ? "Unhide" : "Hide"}</span>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteSubject(s); setSubjectMenu(null); }}
-                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#ef4444" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <Trash2 size={13} />
-                      <span className="text-[13px]">Delete</span>
-                    </button>
+                    {can("edit_subject") && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRenameSubject(s); setSubjectMenu(null); }}
+                        className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                        style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <Pencil size={13} />
+                        <span className="text-[13px]">Rename</span>
+                      </button>
+                    )}
+                    {can("edit_subject") && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); s.hidden ? unhideSubject(s.id) : hideSubject(s.id); }}
+                        className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                        style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        {s.hidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                        <span className="text-[13px]">{s.hidden ? "Unhide" : "Hide"}</span>
+                      </button>
+                    )}
+                    {can("delete_subject") && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteSubject(s); setSubjectMenu(null); }}
+                        className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                        style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#ef4444" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <Trash2 size={13} />
+                        <span className="text-[13px]">Delete</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             ))}
-            <button
-              onClick={() => setShowCreateSubject(true)}
-              className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
-              style={{ background: "transparent", border: "1px dashed #333", color: "#555", padding: "6px 14px", minHeight: 34 }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#09BC8A";
-                e.currentTarget.style.color = "#09BC8A";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#333";
-                e.currentTarget.style.color = "#555";
-              }}
-            >
-              <Plus size={13} /> Add
-            </button>
+            {can("add_subject") && (
+              <button
+                onClick={() => setShowCreateSubject(true)}
+                className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                style={{ background: "transparent", border: "1px dashed #333", color: "#555", padding: "6px 14px", minHeight: 34 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#09BC8A";
+                  e.currentTarget.style.color = "#09BC8A";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#333";
+                  e.currentTarget.style.color = "#555";
+                }}
+              >
+                <Plus size={13} /> Add
+              </button>
+            )}
             {hiddenSubjectCount > 0 && (
               <button
                 onClick={() => setShowHiddenSubjects(!showHiddenSubjects)}
@@ -273,7 +286,25 @@ export default function CaseView() {
             )}
             {activeSubject && (
               <div className="flex items-center gap-2 ml-auto">
-                {caseData?.status === "active" && (
+                {can("assign_case") && (
+                  <button
+                    onClick={async () => {
+                      const { data } = await supabase
+                        .from("org_members")
+                        .select("*, roles(name), profiles(full_name)")
+                        .eq("org_id", caseData?.org_id || "");
+                      setOrgMembers(data || []);
+                      setShowAssignment(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "6px 14px", minHeight: 34 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+                  >
+                    <Users size={13} /> Assign
+                  </button>
+                )}
+                {caseData?.status === "active" && can("archive_case") && (
                   <button
                     onClick={() => setShowClosureModal(true)}
                     className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
@@ -285,7 +316,7 @@ export default function CaseView() {
                     Close Case
                   </button>
                 )}
-                {caseData?.status === "closed" && (
+                {caseData?.status === "closed" && can("archive_case") && (
                   <button
                     onClick={async () => {
                       await supabase.from("cases").update({ status: "active" }).eq("id", caseData.id);
@@ -298,20 +329,22 @@ export default function CaseView() {
                     Reopen
                   </button>
                 )}
-                <button
-                  onClick={() => setChatOpen(!chatOpen)}
-                  className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
-                  style={{
-                    background: chatOpen ? "#1a1a1a" : "transparent",
-                    border: `1px solid ${chatOpen ? "#09BC8A" : "#333"}`,
-                    color: chatOpen ? "#09BC8A" : "#888",
-                    padding: "6px 14px",
-                    minHeight: 34,
-                  }}
-                >
-                  <MessageSquare size={13} />
-                  Chat
-                </button>
+                {!isRole("client") && (
+                  <button
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{
+                      background: chatOpen ? "#1a1a1a" : "transparent",
+                      border: `1px solid ${chatOpen ? "#09BC8A" : "#333"}`,
+                      color: chatOpen ? "#09BC8A" : "#888",
+                      padding: "6px 14px",
+                      minHeight: 34,
+                    }}
+                  >
+                    <MessageSquare size={13} />
+                    Chat
+                  </button>
+                )}
                 <div className="relative flex">
                   <button
                     onClick={async () => {
@@ -395,7 +428,7 @@ export default function CaseView() {
         <CaseChecklist description={caseData?.description} caseId={caseData?.id} />
 
         <div className="flex-1 overflow-y-auto">
-          <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject }} />
+          <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject, roleName: role?.name }} />
         </div>
       </div>
 
@@ -476,6 +509,15 @@ export default function CaseView() {
           onClose={() => setShowCreateSubject(false)}
           onCreate={handleCreateSubject}
           isFirst={subjects.length === 0}
+        />
+      )}
+
+      {/* Case Assignment Modal */}
+      {showAssignment && (
+        <CaseAssignmentModal
+          caseId={caseId}
+          members={orgMembers}
+          onClose={() => setShowAssignment(false)}
         />
       )}
 

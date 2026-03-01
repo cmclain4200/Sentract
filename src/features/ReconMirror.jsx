@@ -10,7 +10,12 @@ import { countDataPoints } from "../lib/profileToPrompt";
 import { geocodeProfileLocations, formatGeocodedLocations } from "../lib/geocode";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { useNotifications } from "../contexts/NotificationContext";
+import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
+import AssessmentActions from "../components/AssessmentActions";
+import AssessmentComments from "../components/AssessmentComments";
+import { logEvent } from "../lib/timeline";
 import { useEngine, ADVERSARY_TYPES, OBJECTIVES, SOPHISTICATION_LEVELS } from "../engine";
 import SourceLinkedNarrative from "../components/recon/SourceLinkedNarrative";
 import ThreatActorCard from "../components/recon/ThreatActorCard";
@@ -32,6 +37,7 @@ const DELIMITER = "---SCENARIO_JSON---";
 export default function ReconMirror() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { can, isRole } = useOrg();
   const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
@@ -92,7 +98,7 @@ export default function ReconMirror() {
     if (!subject?.id) return;
     supabase
       .from("assessments")
-      .select("id, created_at, parameters, narrative_output, scenario_json")
+      .select("id, created_at, parameters, narrative_output, scenario_json, status, reviewer_notes")
       .eq("subject_id", subject.id)
       .eq("type", "recon_mirror")
       .order("created_at", { ascending: false })
@@ -281,9 +287,20 @@ export default function ReconMirror() {
           scenario_json: scenarioJson,
           model_used: "claude-sonnet-4-20250514",
           data: {},
-        }).select("id, created_at, parameters, narrative_output, scenario_json").single();
+          status: isRole("analyst") ? "draft" : "published",
+        }).select("id, created_at, parameters, narrative_output, scenario_json, status, reviewer_notes").single();
 
-        if (saved) setAssessments((prev) => [saved, ...prev]);
+        if (saved) {
+          setAssessments((prev) => [saved, ...prev]);
+          logEvent({
+            subjectId: subject.id,
+            caseId: caseData?.id,
+            eventType: "assessment_generated",
+            category: "workflow",
+            title: "Recon Mirror assessment generated",
+            metadata: { assessment_id: saved.id, module: "recon_mirror" },
+          });
+        }
       }
 
       // Enforce minimum animation duration (4s) before revealing results
@@ -420,22 +437,24 @@ export default function ReconMirror() {
               sophistication={SOPHISTICATION_LEVELS.find((s) => s.value === sophistication)?.label || sophistication}
             />
 
-            <button
-              onClick={generate}
-              disabled={isGenerating}
-              className="w-full py-3 text-[13px] font-semibold tracking-wide rounded-md flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
-              style={{
-                background: isGenerating ? "#0d0d0d" : "#09BC8A",
-                color: isGenerating ? "#09BC8A" : "#000",
-                border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
-              }}
-            >
-              {isGenerating ? (
-                <><span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" /><span className="ml-1">Generating...</span></>
-              ) : (
-                <><Crosshair size={15} />Generate Assessment</>
-              )}
-            </button>
+            {can("run_assessment") && (
+              <button
+                onClick={generate}
+                disabled={isGenerating}
+                className="w-full py-3 text-[13px] font-semibold tracking-wide rounded-md flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
+                style={{
+                  background: isGenerating ? "#0d0d0d" : "#09BC8A",
+                  color: isGenerating ? "#09BC8A" : "#000",
+                  border: isGenerating ? "1px solid rgba(9, 188, 138,0.2)" : "1px solid #09BC8A",
+                }}
+              >
+                {isGenerating ? (
+                  <><span className="pulse-dot" /><span className="pulse-dot" /><span className="pulse-dot" /><span className="ml-1">Generating...</span></>
+                ) : (
+                  <><Crosshair size={15} />Generate Assessment</>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Data Points */}
@@ -480,11 +499,12 @@ export default function ReconMirror() {
                         <span className="text-[11px] font-mono" style={{ color: "#888" }}>
                           {new Date(a.created_at).toLocaleDateString()}
                         </span>
+                        <AssessmentStatusBadge status={a.status} />
                       </div>
                       <div className="text-[11px]" style={{ color: "#666" }}>
                         {a.parameters?.adversaryType} · {a.parameters?.objective}
                       </div>
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <button
                           onClick={() => loadAssessment(a)}
                           className="text-[10px] px-2 py-1 rounded cursor-pointer"
@@ -492,14 +512,15 @@ export default function ReconMirror() {
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => deleteAssessment(a.id)}
-                          className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                          style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
-                        >
-                          <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
-                        </button>
+                        <AssessmentActions
+                          assessment={a}
+                          caseId={caseData?.id}
+                          subjectName={subject?.name}
+                          onUpdate={(updated) => setAssessments((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
+                          onDelete={(id) => setAssessments((prev) => prev.filter((x) => x.id !== id))}
+                        />
                       </div>
+                      <AssessmentComments assessmentId={a.id} />
                     </div>
                   ))}
                 </div>
@@ -585,7 +606,7 @@ export default function ReconMirror() {
                       {isShieldMode ? 'Exit Shield' : 'Shield Mode'}
                     </button>
                     <ActionBtn icon={Copy} label="Copy" onClick={() => navigator.clipboard.writeText(narrative)} />
-                    <ActionBtn icon={RefreshCw} label="Regenerate" onClick={generate} />
+                    {can("run_assessment") && <ActionBtn icon={RefreshCw} label="Regenerate" onClick={generate} />}
                   </>
                 )}
               </div>

@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 export default function Signup() {
   const [fullName, setFullName] = useState("");
@@ -9,8 +10,28 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [invitation, setInvitation] = useState(null);
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const inviteId = searchParams.get("invite");
+    if (!inviteId) return;
+    supabase
+      .from("invitations")
+      .select("*, organizations(name)")
+      .eq("id", inviteId)
+      .eq("status", "pending")
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setInvitation(data);
+          setEmail(data.email);
+          setOrganization(data.organizations?.name || "");
+        }
+      });
+  }, [searchParams]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -39,6 +60,12 @@ export default function Signup() {
             <span className="section-label">Authentication</span>
             <h2 className="text-white text-[24px] font-semibold mt-1">Create Account</h2>
           </div>
+
+          {invitation && (
+            <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)", color: "#09BC8A" }}>
+              You've been invited to join <strong>{invitation.organizations?.name}</strong>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>

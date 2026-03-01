@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
-import { Clock, FileText, Shield, Search, AlertTriangle, User, GitMerge, Upload, Bell, Eye } from "lucide-react";
+import { Clock, FileText, Shield, Search, AlertTriangle, User, GitMerge, Upload, Bell, Eye, Send, CheckCircle, XCircle, Globe, Trash2 } from "lucide-react";
 import SectionHeader from "../components/common/SectionHeader";
 import { fetchTimeline } from "../lib/timeline";
 
@@ -10,6 +10,11 @@ const EVENT_ICONS = {
   enrichment_run: Search,
   breach_detected: AlertTriangle,
   assessment_generated: Shield,
+  assessment_submitted: Send,
+  assessment_approved: CheckCircle,
+  assessment_rejected: XCircle,
+  assessment_published: Globe,
+  assessment_deleted: Trash2,
   observation_added: Eye,
   relationship_synced: GitMerge,
   import_completed: Upload,
@@ -22,13 +27,18 @@ const EVENT_COLORS = {
   enrichment_run: "#a855f7",
   breach_detected: "#ef4444",
   assessment_generated: "#f59e0b",
+  assessment_submitted: "#f59e0b",
+  assessment_approved: "#09BC8A",
+  assessment_rejected: "#ef4444",
+  assessment_published: "#3b82f6",
+  assessment_deleted: "#555",
   observation_added: "#09BC8A",
   relationship_synced: "#3b82f6",
   import_completed: "#10b981",
   monitoring_alert: "#ef4444",
 };
 
-const CATEGORIES = ["All", "identity", "digital", "behavioral", "breaches", "network", "records", "enrichment"];
+const CATEGORIES = ["All", "identity", "digital", "behavioral", "breaches", "network", "records", "enrichment", "workflow"];
 
 function groupByDate(events) {
   const groups = {};

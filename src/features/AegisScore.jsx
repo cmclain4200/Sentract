@@ -7,11 +7,17 @@ import { calculateCompleteness } from "../lib/profileCompleteness";
 import { calculateAegisScore, buildRemediationOptions, simulateRemediation } from "../lib/aegisScore";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { getBenchmarkData } from "../lib/enrichment/benchmarking";
+import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
+import AssessmentActions from "../components/AssessmentActions";
+import AssessmentComments from "../components/AssessmentComments";
+import { logEvent } from "../lib/timeline";
 
 export default function AegisScore() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { can, isRole } = useOrg();
   const profileData = subject?.profile_data || {};
   const completeness = calculateCompleteness(profileData);
 
@@ -44,7 +50,7 @@ export default function AegisScore() {
     if (!subject?.id) return;
     supabase
       .from("assessments")
-      .select("id, created_at, score_data")
+      .select("id, created_at, score_data, status, reviewer_notes")
       .eq("subject_id", subject.id)
       .eq("module", "aegis_score")
       .order("created_at", { ascending: false })
@@ -68,11 +74,22 @@ export default function AegisScore() {
         module: "aegis_score",
         score_data: baseScore,
         data: {},
+        status: isRole("analyst") ? "draft" : "published",
       })
-      .select("id, created_at, score_data")
+      .select("id, created_at, score_data, status, reviewer_notes")
       .single();
-    if (saved) setSavedScores((prev) => [saved, ...prev]);
-  }, [subject?.id, user?.id, baseScore]);
+    if (saved) {
+      setSavedScores((prev) => [saved, ...prev]);
+      logEvent({
+        subjectId: subject.id,
+        caseId: caseData?.id,
+        eventType: "assessment_generated",
+        category: "workflow",
+        title: "Aegis Score assessment generated",
+        metadata: { assessment_id: saved.id, module: "aegis_score" },
+      });
+    }
+  }, [subject?.id, user?.id, baseScore, isRole, caseData?.id]);
 
   useEffect(() => {
     if (!subject?.id || !user?.id) return;
@@ -123,11 +140,22 @@ export default function AegisScore() {
         module: "aegis_score",
         score_data: baseScore,
         data: {},
+        status: isRole("analyst") ? "draft" : "published",
       })
-      .select("id, created_at, score_data")
+      .select("id, created_at, score_data, status, reviewer_notes")
       .single();
 
-    if (saved) setSavedScores((prev) => [saved, ...prev]);
+    if (saved) {
+      setSavedScores((prev) => [saved, ...prev]);
+      logEvent({
+        subjectId: subject.id,
+        caseId: caseData?.id,
+        eventType: "assessment_generated",
+        category: "workflow",
+        title: "Aegis Score snapshot saved",
+        metadata: { assessment_id: saved.id, module: "aegis_score" },
+      });
+    }
     setSaving(false);
   }
 
@@ -188,14 +216,16 @@ export default function AegisScore() {
             {/* Radar Chart */}
             <AegisRadarChart displayScore={displayScore} previousScore={savedScores[0]?.score_data || null} />
 
-            <button
-              onClick={saveScore}
-              disabled={saving}
-              className="mt-3 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
-              style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#888" }}
-            >
-              <Save size={11} />{saving ? "Saving..." : "Save Snapshot"}
-            </button>
+            {can("run_assessment") && (
+              <button
+                onClick={saveScore}
+                disabled={saving}
+                className="mt-3 flex items-center gap-2 text-[11px] px-3 py-1.5 rounded cursor-pointer transition-all"
+                style={{ background: "transparent", border: "1px solid #2a2a2a", color: "#888" }}
+              >
+                <Save size={11} />{saving ? "Saving..." : "Save Snapshot"}
+              </button>
+            )}
           </div>
 
           {/* Right: Factor Bars */}
@@ -394,21 +424,27 @@ export default function AegisScore() {
                   const level = s.score_data?.riskLevel ?? "";
                   const sTier = getTier(score);
                   return (
-                    <div key={s.id} className="flex items-center gap-4 px-4 py-3 rounded" style={{ background: "#0d0d0d", border: "1px solid #1a1a1a" }}>
-                      <Clock size={12} color="#555" />
-                      <span className="text-[12px] font-mono" style={{ color: "#888" }}>
-                        {new Date(s.created_at).toLocaleDateString()}
-                      </span>
-                      <span className="text-[16px] font-bold" style={{ color: sTier.color }}>{score}</span>
-                      <span className="text-[11px]" style={{ color: sTier.color }}>{level}</span>
-                      <div className="flex-1" />
-                      <button
-                        onClick={() => deleteScore(s.id)}
-                        className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                        style={{ background: "transparent", border: "1px solid #333", color: "#555" }}
-                      >
-                        <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} />
-                      </button>
+                    <div key={s.id} className="px-4 py-3 rounded" style={{ background: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+                      <div className="flex items-center gap-4">
+                        <Clock size={12} color="#555" />
+                        <span className="text-[12px] font-mono" style={{ color: "#888" }}>
+                          {new Date(s.created_at).toLocaleDateString()}
+                        </span>
+                        <AssessmentStatusBadge status={s.status} />
+                        <span className="text-[16px] font-bold" style={{ color: sTier.color }}>{score}</span>
+                        <span className="text-[11px]" style={{ color: sTier.color }}>{level}</span>
+                        <div className="flex-1" />
+                      </div>
+                      <div className="mt-2">
+                        <AssessmentActions
+                          assessment={s}
+                          caseId={caseData?.id}
+                          subjectName={subject?.name}
+                          onUpdate={(updated) => setSavedScores((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
+                          onDelete={(id) => setSavedScores((prev) => prev.filter((x) => x.id !== id))}
+                        />
+                      </div>
+                      <AssessmentComments assessmentId={s.id} />
                     </div>
                   );
                 })}

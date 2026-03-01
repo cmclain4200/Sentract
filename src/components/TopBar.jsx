@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, LogOut, Settings, ArrowLeft } from "lucide-react";
+import { ChevronDown, LogOut, Settings, ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useOrg } from "../contexts/OrgContext";
 import { useNavigate, useMatch } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import AlertBell from "./AlertBell";
+import ApprovalBadge from "./ApprovalBadge";
+import RoleBadge from "./RoleBadge";
 
 const CASE_TYPES = [
   { value: "EP", label: "Executive Protection", color: "#09BC8A" },
@@ -17,6 +20,7 @@ function typeColor(type) {
 
 export default function TopBar() {
   const { user, profile, signOut } = useAuth();
+  const { org, role, can, isOrgOwner, isRole } = useOrg();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -34,7 +38,6 @@ export default function TopBar() {
     supabase
       .from("cases")
       .select("id, name, type, status")
-      .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .then(({ data }) => {
         if (data) setCases(data);
@@ -85,8 +88,8 @@ export default function TopBar() {
           />
         </button>
 
-        {/* Case dropdown */}
-        {currentCase && (
+        {/* Case dropdown (hidden for clients) */}
+        {currentCase && !isRole("client") && (
           <div className="relative" ref={caseRef}>
             <button
               onClick={() => setCaseOpen(!caseOpen)}
@@ -199,6 +202,8 @@ export default function TopBar() {
       </div>
 
       <div className="flex items-center gap-6">
+        {/* Approval Badge for managers/reviewers */}
+        <ApprovalBadge onClick={() => navigate("/dashboard")} />
         {/* Alert Bell */}
         <AlertBell />
         {/* User dropdown */}
@@ -222,6 +227,7 @@ export default function TopBar() {
             <span className="text-[14px]" style={{ color: "#ccc" }}>
               {displayName}
             </span>
+            {role?.name && <RoleBadge roleName={role.name} size="sm" />}
             <ChevronDown
               size={14}
               color="#555"
@@ -245,9 +251,9 @@ export default function TopBar() {
                 <div className="text-[13px] font-mono" style={{ color: "#999" }}>
                   {user?.email}
                 </div>
-                {profile?.organization && (
+                {org?.name && (
                   <div className="text-[12px] mt-0.5" style={{ color: "#555" }}>
-                    {profile.organization}
+                    {org.name}
                   </div>
                 )}
               </div>
@@ -263,6 +269,20 @@ export default function TopBar() {
                   Settings
                 </span>
               </button>
+              {(can("manage_teams") || can("invite_member") || isOrgOwner()) && (
+                <button
+                  onClick={() => { navigate("/settings/team"); setOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                  style={{ background: "transparent", border: "none", minHeight: 42, padding: "0 16px" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <Users size={15} color="#888" />
+                  <span className="text-[14px]" style={{ color: "#888" }}>
+                    Team
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleSignOut}
                 className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
