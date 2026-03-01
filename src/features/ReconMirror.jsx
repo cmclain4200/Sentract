@@ -15,6 +15,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
 import AssessmentActions from "../components/AssessmentActions";
 import AssessmentComments from "../components/AssessmentComments";
+import { logEvent } from "../lib/timeline";
 import { useEngine, ADVERSARY_TYPES, OBJECTIVES, SOPHISTICATION_LEVELS } from "../engine";
 import SourceLinkedNarrative from "../components/recon/SourceLinkedNarrative";
 import ThreatActorCard from "../components/recon/ThreatActorCard";
@@ -289,7 +290,17 @@ export default function ReconMirror() {
           status: isRole("analyst") ? "draft" : "published",
         }).select("id, created_at, parameters, narrative_output, scenario_json, status, reviewer_notes").single();
 
-        if (saved) setAssessments((prev) => [saved, ...prev]);
+        if (saved) {
+          setAssessments((prev) => [saved, ...prev]);
+          logEvent({
+            subjectId: subject.id,
+            caseId: caseData?.id,
+            eventType: "assessment_generated",
+            category: "workflow",
+            title: "Recon Mirror assessment generated",
+            metadata: { assessment_id: saved.id, module: "recon_mirror" },
+          });
+        }
       }
 
       // Enforce minimum animation duration (4s) before revealing results
@@ -503,6 +514,8 @@ export default function ReconMirror() {
                         </button>
                         <AssessmentActions
                           assessment={a}
+                          caseId={caseData?.id}
+                          subjectName={subject?.name}
                           onUpdate={(updated) => setAssessments((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
                           onDelete={(id) => setAssessments((prev) => prev.filter((x) => x.id !== id))}
                         />

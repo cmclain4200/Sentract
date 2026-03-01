@@ -11,6 +11,7 @@ import BulkImport from "../features/import/BulkImport";
 import { CASE_TEMPLATES } from "../lib/caseTemplates";
 import { calculateCasePriority, PRIORITY_COLORS } from "../lib/casePriority";
 import OwnerStatsPanel from "../components/dashboard/OwnerStatsPanel";
+import OwnerAnalyticsPanel from "../components/dashboard/OwnerAnalyticsPanel";
 import ManagerWorkloadPanel from "../components/dashboard/ManagerWorkloadPanel";
 import ApprovalQueue from "../components/dashboard/ApprovalQueue";
 import ReviewQueue from "../components/dashboard/ReviewQueue";
@@ -457,6 +458,7 @@ export default function Dashboard() {
 
         {/* Role-specific panels */}
         {!loading && isOrgOwner() && <OwnerStatsPanel cases={cases} />}
+        {!loading && isOrgOwner() && <OwnerAnalyticsPanel />}
         {!loading && isRole("team_manager") && <ManagerWorkloadPanel />}
 
         {loading ? (

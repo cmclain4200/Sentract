@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { X, Send } from "lucide-react";
+import { X, Send, Check, Copy } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { sendEmail } from "../lib/email";
 
 const ROLE_LABELS = {
   org_owner: "Owner",
@@ -11,26 +12,28 @@ const ROLE_LABELS = {
   client: "Client",
 };
 
-export default function InviteMemberModal({ orgId, roles, teams, onClose, onInvited }) {
+export default function InviteMemberModal({ orgId, orgName, roles, teams, onClose, onInvited }) {
   const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState(roles.find((r) => r.name === "analyst")?.id || roles[0]?.id || "");
   const [teamId, setTeamId] = useState(teams[0]?.id || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [inviteUrl, setInviteUrl] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error: err } = await supabase.from("invitations").insert({
+    const { data, error: err } = await supabase.from("invitations").insert({
       email: email.trim().toLowerCase(),
       org_id: orgId,
       role_id: roleId,
       team_id: teamId || null,
       invited_by: user.id,
-    });
+    }).select().single();
 
     if (err) {
       setError(err.message);
@@ -38,7 +41,27 @@ export default function InviteMemberModal({ orgId, roles, teams, onClose, onInvi
       return;
     }
 
-    onInvited();
+    const url = `${window.location.origin}/signup?invite=${data.id}`;
+    setInviteUrl(url);
+    setLoading(false);
+
+    const selectedRole = roles.find((r) => r.id === roleId);
+    sendEmail({
+      to: email.trim().toLowerCase(),
+      subject: `You've been invited to ${orgName || "Sentract"}`,
+      template: "invitation",
+      templateData: {
+        orgName: orgName || "Sentract",
+        roleName: ROLE_LABELS[selectedRole?.name] || selectedRole?.name || "Member",
+        signupUrl: url,
+      },
+    });
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -72,73 +95,118 @@ export default function InviteMemberModal({ orgId, roles, teams, onClose, onInvi
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div>
-            <label className="sub-label block mb-2">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              className="w-full rounded text-[15px] text-white outline-none"
-              style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-              onFocus={(e) => (e.target.style.borderColor = "#333")}
-              onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-              placeholder="colleague@company.com"
-            />
-          </div>
+        {inviteUrl ? (
+          <div className="flex flex-col gap-5 fade-in">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(9,188,138,0.15)" }}>
+                <Check size={16} color="#09BC8A" />
+              </div>
+              <div>
+                <div className="text-[15px] font-semibold text-white">Invitation Created</div>
+                <div className="text-[12px]" style={{ color: "#555" }}>Share this link with {email}</div>
+              </div>
+            </div>
 
-          <div>
-            <label className="sub-label block mb-2">Role</label>
-            <select
-              value={roleId}
-              onChange={(e) => setRoleId(e.target.value)}
-              className="w-full rounded text-[15px] text-white outline-none"
-              style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={inviteUrl}
+                className="flex-1 rounded text-[13px] font-mono text-white outline-none"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                onClick={(e) => e.target.select()}
+              />
+              <button
+                onClick={copyLink}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded text-[13px] font-semibold cursor-pointer transition-all shrink-0"
+                style={{
+                  background: copied ? "rgba(9,188,138,0.15)" : "#1a1a1a",
+                  border: `1px solid ${copied ? "#09BC8A" : "#333"}`,
+                  color: copied ? "#09BC8A" : "#888",
+                  minHeight: 44,
+                }}
+              >
+                {copied ? <><Check size={13} /> Copied!</> : <><Copy size={13} /> Copy</>}
+              </button>
+            </div>
+
+            <button
+              onClick={() => onInvited()}
+              className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
+              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "14px 32px", minHeight: 48 }}
             >
-              {roles.filter((r) => r.name !== "org_owner").map((r) => (
-                <option key={r.id} value={r.id}>{ROLE_LABELS[r.name] || r.name}</option>
-              ))}
-            </select>
+              Done
+            </button>
           </div>
-
-          {teams.length > 1 && (
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
-              <label className="sub-label block mb-2">Team</label>
+              <label className="sub-label block mb-2">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                className="w-full rounded text-[15px] text-white outline-none"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                onFocus={(e) => (e.target.style.borderColor = "#333")}
+                onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                placeholder="colleague@company.com"
+              />
+            </div>
+
+            <div>
+              <label className="sub-label block mb-2">Role</label>
               <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value)}
                 className="w-full rounded text-[15px] text-white outline-none"
                 style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
               >
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                {roles.filter((r) => r.name !== "org_owner").map((r) => (
+                  <option key={r.id} value={r.id}>{ROLE_LABELS[r.name] || r.name}</option>
                 ))}
               </select>
             </div>
-          )}
 
-          <div className="text-[12px]" style={{ color: "#555" }}>
-            An invitation link will be generated. Share it with the invitee to complete signup.
-          </div>
+            {teams.length > 1 && (
+              <div>
+                <label className="sub-label block mb-2">Team</label>
+                <select
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="w-full rounded text-[15px] text-white outline-none"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                >
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || !email.trim()}
-            className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
-            style={{
-              background: loading || !email.trim() ? "#1a1a1a" : "#09BC8A",
-              color: loading || !email.trim() ? "#555" : "#0a0a0a",
-              border: "none",
-              padding: "14px 32px",
-              minHeight: 48,
-            }}
-          >
-            <Send size={15} />
-            {loading ? "Sending..." : "Send Invitation"}
-          </button>
-        </form>
+            <div className="text-[12px]" style={{ color: "#555" }}>
+              An invitation link will be generated. Share it with the invitee to complete signup.
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !email.trim()}
+              className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
+              style={{
+                background: loading || !email.trim() ? "#1a1a1a" : "#09BC8A",
+                color: loading || !email.trim() ? "#555" : "#0a0a0a",
+                border: "none",
+                padding: "14px 32px",
+                minHeight: 48,
+              }}
+            >
+              <Send size={15} />
+              {loading ? "Sending..." : "Send Invitation"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

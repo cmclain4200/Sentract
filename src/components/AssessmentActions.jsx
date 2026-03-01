@@ -3,15 +3,25 @@ import { Send, Check, X, RotateCcw, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useOrg } from "../contexts/OrgContext";
 import { useAuth } from "../contexts/AuthContext";
+import { logEvent } from "../lib/timeline";
+import { notifyAssessmentStatusChange } from "../lib/notifications";
+import { sendEmail } from "../lib/email";
 
-export default function AssessmentActions({ assessment, onUpdate, onDelete }) {
-  const { can, isRole, isOrgOwner } = useOrg();
+const MODULE_LABELS = {
+  recon_mirror: "Recon Mirror",
+  aegis_score: "Aegis Score",
+  pattern_lens: "Pattern Lens",
+};
+
+export default function AssessmentActions({ assessment, caseId, subjectName, onUpdate, onDelete }) {
+  const { can, isRole, isOrgOwner, org } = useOrg();
   const { user } = useAuth();
   const [rejectNotes, setRejectNotes] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const status = assessment?.status || "draft";
+  const moduleName = MODULE_LABELS[assessment?.module] || assessment?.module || "Assessment";
 
   async function updateStatus(newStatus, extra = {}) {
     if (!assessment?.id) return;
@@ -29,8 +39,30 @@ export default function AssessmentActions({ assessment, onUpdate, onDelete }) {
       .update(updates)
       .eq("id", assessment.id);
 
-    if (!error && onUpdate) {
-      onUpdate({ ...assessment, ...updates });
+    if (!error) {
+      if (onUpdate) onUpdate({ ...assessment, ...updates });
+
+      // Audit trail
+      logEvent({
+        subjectId: assessment.subject_id,
+        caseId: caseId || assessment.case_id,
+        eventType: `assessment_${newStatus}`,
+        category: "workflow",
+        title: `${moduleName} ${newStatus}`,
+        metadata: { assessment_id: assessment.id, module: assessment.module },
+      });
+
+      // In-app + email notifications
+      if (org?.id) {
+        notifyAssessmentStatusChange({
+          assessment,
+          newStatus,
+          orgId: org.id,
+          currentUserId: user.id,
+          moduleName,
+          subjectName,
+        });
+      }
     }
     setLoading(false);
     setShowRejectInput(false);
@@ -40,6 +72,16 @@ export default function AssessmentActions({ assessment, onUpdate, onDelete }) {
   async function handleDelete() {
     if (!assessment?.id) return;
     await supabase.from("assessments").delete().eq("id", assessment.id);
+
+    logEvent({
+      subjectId: assessment.subject_id,
+      caseId: caseId || assessment.case_id,
+      eventType: "assessment_deleted",
+      category: "workflow",
+      title: `${moduleName} deleted`,
+      metadata: { assessment_id: assessment.id, module: assessment.module },
+    });
+
     if (onDelete) onDelete(assessment.id);
   }
 

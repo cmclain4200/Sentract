@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, Trash2, Mail, Shield, ChevronDown, X, UserPlus, Building2 } from "lucide-react";
+import { Users, Plus, Trash2, Mail, Shield, ChevronDown, X, UserPlus, Building2, Copy } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useOrg } from "../contexts/OrgContext";
@@ -35,6 +35,7 @@ export default function TeamManagement() {
   const [showInvite, setShowInvite] = useState(false);
   const [showAssignment, setShowAssignment] = useState(null);
   const [activeTab, setActiveTab] = useState("members");
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     if (!org) return;
@@ -321,6 +322,22 @@ export default function TeamManagement() {
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ color: "#f59e0b", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
                       Pending
                     </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/signup?invite=${inv.id}`);
+                        setCopiedId(inv.id);
+                        setTimeout(() => setCopiedId(null), 2000);
+                      }}
+                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded cursor-pointer"
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${copiedId === inv.id ? "#09BC8A" : "#333"}`,
+                        color: copiedId === inv.id ? "#09BC8A" : "#555",
+                      }}
+                    >
+                      <Copy size={10} />
+                      {copiedId === inv.id ? "Copied!" : "Copy Link"}
+                    </button>
                     {can("invite_member") && (
                       <button
                         onClick={() => revokeInvitation(inv.id)}
@@ -344,6 +361,7 @@ export default function TeamManagement() {
       {showInvite && (
         <InviteMemberModal
           orgId={org.id}
+          orgName={org.name}
           roles={roles}
           teams={teams}
           onClose={() => setShowInvite(false)}

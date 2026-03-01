@@ -12,6 +12,7 @@ import { getBenchmarkData } from "../lib/enrichment/benchmarking";
 import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
 import AssessmentActions from "../components/AssessmentActions";
 import AssessmentComments from "../components/AssessmentComments";
+import { logEvent } from "../lib/timeline";
 
 export default function AegisScore() {
   const { subject, caseData } = useOutletContext();
@@ -77,8 +78,18 @@ export default function AegisScore() {
       })
       .select("id, created_at, score_data, status, reviewer_notes")
       .single();
-    if (saved) setSavedScores((prev) => [saved, ...prev]);
-  }, [subject?.id, user?.id, baseScore, isRole]);
+    if (saved) {
+      setSavedScores((prev) => [saved, ...prev]);
+      logEvent({
+        subjectId: subject.id,
+        caseId: caseData?.id,
+        eventType: "assessment_generated",
+        category: "workflow",
+        title: "Aegis Score assessment generated",
+        metadata: { assessment_id: saved.id, module: "aegis_score" },
+      });
+    }
+  }, [subject?.id, user?.id, baseScore, isRole, caseData?.id]);
 
   useEffect(() => {
     if (!subject?.id || !user?.id) return;
@@ -134,7 +145,17 @@ export default function AegisScore() {
       .select("id, created_at, score_data, status, reviewer_notes")
       .single();
 
-    if (saved) setSavedScores((prev) => [saved, ...prev]);
+    if (saved) {
+      setSavedScores((prev) => [saved, ...prev]);
+      logEvent({
+        subjectId: subject.id,
+        caseId: caseData?.id,
+        eventType: "assessment_generated",
+        category: "workflow",
+        title: "Aegis Score snapshot saved",
+        metadata: { assessment_id: saved.id, module: "aegis_score" },
+      });
+    }
     setSaving(false);
   }
 
@@ -417,6 +438,8 @@ export default function AegisScore() {
                       <div className="mt-2">
                         <AssessmentActions
                           assessment={s}
+                          caseId={caseData?.id}
+                          subjectName={subject?.name}
                           onUpdate={(updated) => setSavedScores((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
                           onDelete={(id) => setSavedScores((prev) => prev.filter((x) => x.id !== id))}
                         />

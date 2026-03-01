@@ -522,3 +522,27 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- RBAC Notifications (workflow events, separate from monitoring_alerts)
+create table if not exists public.rbac_notifications (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  org_id uuid references public.organizations on delete cascade not null,
+  notification_type text not null check (notification_type in (
+    'assessment_submitted', 'assessment_approved', 'assessment_rejected',
+    'assessment_published', 'invitation_accepted'
+  )),
+  title text not null,
+  detail text,
+  link text,
+  metadata jsonb default '{}'::jsonb,
+  read boolean default false,
+  created_at timestamptz default now()
+);
+alter table public.rbac_notifications enable row level security;
+create index idx_rbac_notifications_user_unread on public.rbac_notifications(user_id, read) where read = false;
+
+create policy "rbac_notifications_select" on public.rbac_notifications for select using (user_id = auth.uid());
+create policy "rbac_notifications_insert" on public.rbac_notifications for insert with check (org_id = public.get_user_org_id());
+create policy "rbac_notifications_update" on public.rbac_notifications for update using (user_id = auth.uid());
+create policy "rbac_notifications_delete" on public.rbac_notifications for delete using (user_id = auth.uid());

@@ -11,6 +11,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
 import AssessmentActions from "../components/AssessmentActions";
 import AssessmentComments from "../components/AssessmentComments";
+import { logEvent } from "../lib/timeline";
 import { useEngine, buildHeatmapFromRoutines } from "../engine";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -124,7 +125,17 @@ export default function PatternLens() {
           .select("id, created_at, narrative_output, status, reviewer_notes")
           .single();
 
-        if (saved) setSavedAnalyses((prev) => [saved, ...prev]);
+        if (saved) {
+          setSavedAnalyses((prev) => [saved, ...prev]);
+          logEvent({
+            subjectId: subject.id,
+            caseId: caseData?.id,
+            eventType: "assessment_generated",
+            category: "workflow",
+            title: "Pattern Lens assessment generated",
+            metadata: { assessment_id: saved.id, module: "pattern_lens" },
+          });
+        }
       }
 
       notify({
@@ -391,6 +402,8 @@ export default function PatternLens() {
                         style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A" }}>View</button>
                       <AssessmentActions
                         assessment={a}
+                        caseId={caseData?.id}
+                        subjectName={subject?.name}
                         onUpdate={(updated) => setSavedAnalyses((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
                         onDelete={(id) => setSavedAnalyses((prev) => prev.filter((x) => x.id !== id))}
                       />
