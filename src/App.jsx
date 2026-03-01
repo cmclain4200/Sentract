@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { createSentractEngine, EngineProvider } from "./engine";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
@@ -15,11 +16,16 @@ import ReconMirror from "./features/ReconMirror";
 import AegisScore from "./features/AegisScore";
 import PatternLens from "./features/PatternLens";
 import CrossWire from "./features/CrossWire";
+import Timeline from "./features/Timeline";
+import InvestigationGraph from "./features/graph/InvestigationGraph";
+
+const engine = createSentractEngine();
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <EngineProvider value={engine}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
@@ -41,10 +47,13 @@ export default function App() {
               <Route path="aegis" element={<AegisScore />} />
               <Route path="patterns" element={<PatternLens />} />
               <Route path="crosswire" element={<CrossWire />} />
+              <Route path="timeline" element={<Timeline />} />
+              <Route path="graph" element={<InvestigationGraph />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </EngineProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -224,8 +224,8 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Top row: 3 cards */}
-          <div className="l-features-grid-3 l-reveal">
+          {/* 2×2 feature grid */}
+          <div className="l-features-grid-2x2 l-reveal">
             {/* RECON MIRROR */}
             <div className="l-feature-card">
               <div className="l-feature-visual" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
@@ -347,10 +347,7 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Bottom row: 2 cards */}
-          <div className="l-features-grid-2 l-reveal">
             {/* CROSSWIRE */}
             <div className="l-feature-card">
               <div className="l-feature-visual" style={{ padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "stretch" }}>
@@ -379,51 +376,6 @@ export default function Landing() {
                   Automatic detection of shared entities across investigations — overlapping
                   breaches, common associates, shared data brokers. Organizational vulnerabilities
                   that case-by-case analysis would miss.
-                </div>
-              </div>
-            </div>
-
-            {/* REPORT INGESTION */}
-            <div className="l-feature-card">
-              <div className="l-feature-visual" style={{ padding: 24, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 18 }}>
-                  Report Ingestion
-                </div>
-                <div className="l-mini-extract">
-                  <div className="l-extract-doc">
-                    <div className="l-extract-doc-lines">
-                      <div className="l-extract-doc-line" style={{ width: 24 }} />
-                      <div className="l-extract-doc-line" style={{ width: 20 }} />
-                      <div className="l-extract-doc-line" style={{ width: 16 }} />
-                      <div className="l-extract-doc-line" style={{ width: 12 }} />
-                    </div>
-                  </div>
-                  <div className="l-extract-arrow">→</div>
-                  <div className="l-extract-fields">
-                    <div className="l-extract-field filled">
-                      <span className="l-extract-field-label">Name</span> Jonathan R. Mercer
-                    </div>
-                    <div className="l-extract-field filled">
-                      <span className="l-extract-field-label">Role</span> CFO, Apex Maritime
-                    </div>
-                    <div className="l-extract-field filled">
-                      <span className="l-extract-field-label">Address</span> 1847 Pacific Heights
-                    </div>
-                    <div className="l-extract-field filled">
-                      <span className="l-extract-field-label">Breach</span> LinkedIn (2021)
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)", marginTop: 4 }}>
-                      ✓ 48 data points extracted
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="l-feature-content">
-                <div className="l-feature-subtitle">Upload. Extract. Analyze.</div>
-                <div className="l-feature-name">Report Ingestion</div>
-                <div className="l-feature-desc">
-                  Drop an existing investigation report and AI parses it into a structured
-                  intelligence profile in under 2 minutes. Review, confirm, and run analysis immediately.
                 </div>
               </div>
             </div>

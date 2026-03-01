@@ -479,13 +479,7 @@
 /* ============================================
    FEATURES
    ============================================ */
-.l-features-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 20px;
-}
-.l-features-grid-2 {
+.l-features-grid-2x2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
@@ -857,8 +851,7 @@
   .l-hero-inner { grid-template-columns: 1fr; gap: 48px; }
   .l-hero-mockup { transform: none; max-width: 520px; }
   .l-hero-mockup:hover { transform: none; }
-  .l-features-grid-3 { grid-template-columns: 1fr 1fr; }
-  .l-features-grid-2 { grid-template-columns: 1fr 1fr; }
+  .l-features-grid-2x2 { grid-template-columns: 1fr 1fr; }
   .l-workflow-steps { grid-template-columns: repeat(2, 1fr); gap: 32px; }
   .l-workflow-steps::before { display: none; }
   .l-usecase-grid { grid-template-columns: repeat(3, 1fr); }
@@ -870,8 +863,7 @@
   .l-section-title { font-size: 32px; }
   .l-nav-links { display: none; }
   .l-problem-grid { grid-template-columns: 1fr; gap: 48px; }
-  .l-features-grid-3 { grid-template-columns: 1fr; }
-  .l-features-grid-2 { grid-template-columns: 1fr; }
+  .l-features-grid-2x2 { grid-template-columns: 1fr; }
   .l-workflow-steps { grid-template-columns: 1fr 1fr; }
   .l-pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
   .l-security-grid { grid-template-columns: 1fr; gap: 32px; }

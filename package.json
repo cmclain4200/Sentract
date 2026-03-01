@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.2.1",
+    "d3-force": "^3.0.0",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.575.0",
     "mammoth": "^1.11.0",

@@ -385,6 +385,14 @@ function buildKeyExposures(profileData) {
     exposures.push({ text: `${predictable.length} highly predictable routine${predictable.length > 1 ? "s" : ""}`, severity: "amber", category: "behavioral" });
   }
 
+  const observations = profileData.behavioral?.observations || [];
+  const highExploit = observations.filter((o) => o.exploitability === "high");
+  if (highExploit.length > 0) {
+    exposures.push({ text: `${highExploit.length} high-exploitability observation${highExploit.length > 1 ? "s" : ""}`, severity: "red", category: "behavioral" });
+  } else if (observations.length > 0) {
+    exposures.push({ text: `${observations.length} behavioral observation${observations.length > 1 ? "s" : ""}`, severity: "amber", category: "behavioral" });
+  }
+
   const family = profileData.network?.family_members || [];
   if (family.length > 0) {
     const withSocial = family.filter((f) => f.social_media && f.social_media.length > 0);

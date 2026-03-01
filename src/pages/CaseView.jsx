@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
-import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical } from "lucide-react";
+import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
+import { generateReportV2 } from "../lib/reportExportV2";
+import { REPORT_TEMPLATES } from "../lib/reportTemplates";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "../components/Sidebar";
+import CaseChat from "../features/chat/CaseChat";
 
 export default function CaseView() {
   const { caseId } = useParams();
@@ -20,6 +23,9 @@ export default function CaseView() {
   const [showHiddenSubjects, setShowHiddenSubjects] = useState(false);
   const [subjectMenu, setSubjectMenu] = useState(null);
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [reportTemplate, setReportTemplate] = useState("full");
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -235,39 +241,84 @@ export default function CaseView() {
               </button>
             )}
             {activeSubject && (
-              <button
-                onClick={async () => {
-                  setExporting(true);
-                  try {
-                    await generateReport({
-                      subject: activeSubject,
-                      caseData,
-                      profileData: activeSubject.profile_data,
-                      supabase,
-                    });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-                disabled={exporting}
-                className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer ml-auto"
-                style={{
-                  background: "transparent",
-                  border: "1px solid #333",
-                  color: exporting ? "#555" : "#09BC8A",
-                  padding: "6px 14px",
-                  minHeight: 34,
-                }}
-                onMouseEnter={(e) => {
-                  if (!exporting) e.currentTarget.style.background = "#1a1a1a";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <FileDown size={13} />
-                {exporting ? "Exporting..." : "Export PDF"}
-              </button>
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  onClick={() => setChatOpen(!chatOpen)}
+                  className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                  style={{
+                    background: chatOpen ? "#1a1a1a" : "transparent",
+                    border: `1px solid ${chatOpen ? "#09BC8A" : "#333"}`,
+                    color: chatOpen ? "#09BC8A" : "#888",
+                    padding: "6px 14px",
+                    minHeight: 34,
+                  }}
+                >
+                  <MessageSquare size={13} />
+                  Chat
+                </button>
+                <div className="relative">
+                  <button
+                    onClick={async () => {
+                      setExporting(true);
+                      try {
+                        await generateReportV2({
+                          subject: activeSubject,
+                          caseData,
+                          profileData: activeSubject.profile_data,
+                          supabase,
+                          template: reportTemplate,
+                        });
+                      } finally {
+                        setExporting(false);
+                      }
+                    }}
+                    disabled={exporting}
+                    className="flex items-center gap-1.5 rounded-l text-[13px] cursor-pointer"
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #333",
+                      borderRight: "none",
+                      color: exporting ? "#555" : "#09BC8A",
+                      padding: "6px 14px",
+                      minHeight: 34,
+                    }}
+                    onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "#1a1a1a"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <FileDown size={13} />
+                    {exporting ? "Exporting..." : `Export ${REPORT_TEMPLATES[reportTemplate]?.label || "PDF"}`}
+                  </button>
+                  <button
+                    onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+                    className="flex items-center justify-center rounded-r text-[13px] cursor-pointer"
+                    style={{ background: "transparent", border: "1px solid #333", padding: "6px 6px", minHeight: 34 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <ChevronDown size={12} color="#555" />
+                  </button>
+                  {showTemplateMenu && (
+                    <div
+                      className="absolute right-0 top-full mt-1 w-[200px] rounded-md overflow-hidden z-50 fade-in"
+                      style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+                    >
+                      {Object.values(REPORT_TEMPLATES).map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => { setReportTemplate(t.id); setShowTemplateMenu(false); }}
+                          className="w-full flex flex-col px-4 py-2.5 text-left transition-all cursor-pointer"
+                          style={{ background: reportTemplate === t.id ? "#1a1a1a" : "transparent", border: "none" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = reportTemplate === t.id ? "#1a1a1a" : "transparent")}
+                        >
+                          <span className="text-[13px]" style={{ color: reportTemplate === t.id ? "#09BC8A" : "#ccc" }}>{t.label}</span>
+                          <span className="text-[11px]" style={{ color: "#555" }}>{t.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -277,7 +328,20 @@ export default function CaseView() {
         </div>
       </div>
 
-      {/* Close subject menu on outside click */}
+      {/* Chat Panel */}
+      {chatOpen && activeSubject && (
+        <CaseChat
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+          subject={activeSubject}
+          caseData={caseData}
+        />
+      )}
+
+      {/* Close menus on outside click */}
+      {showTemplateMenu && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowTemplateMenu(false)} />
+      )}
       {subjectMenu && (
         <div className="fixed inset-0 z-40" onClick={() => setSubjectMenu(null)} />
       )}

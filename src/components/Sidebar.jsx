@@ -1,5 +1,5 @@
 import { NavLink, Link } from "react-router-dom";
-import { User, Radio, Shield, Activity, GitMerge, ArrowLeft } from "lucide-react";
+import { User, Radio, Shield, Activity, GitMerge, Clock, Network, ArrowLeft } from "lucide-react";
 
 const modules = [
   { key: "profile", label: "Profile", icon: User, path: "profile" },
@@ -7,6 +7,8 @@ const modules = [
   { key: "aegis", label: "Aegis Score", icon: Shield, path: "aegis" },
   { key: "patterns", label: "Pattern Lens", icon: Activity, path: "patterns" },
   { key: "crosswire", label: "CrossWire", icon: GitMerge, path: "crosswire" },
+  { key: "timeline", label: "Timeline", icon: Clock, path: "timeline" },
+  { key: "graph", label: "Link Graph", icon: Network, path: "graph" },
 ];
 
 export default function Sidebar({ caseName, caseType }) {

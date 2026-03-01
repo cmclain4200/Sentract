@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
 import SectionHeader from "../components/common/SectionHeader";
+import BulkImport from "../features/import/BulkImport";
 
 const CASE_TYPES = [
   { value: "EP", label: "Executive Protection", color: "#09BC8A" },
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [view, setView] = useState("cases");
   const [subjectSort, setSubjectSort] = useState("recent");
+  const [showImport, setShowImport] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -185,14 +187,26 @@ export default function Dashboard() {
               <button className={view === "subjects" ? "active" : ""} onClick={() => setView("subjects")}>Subjects</button>
             </div>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-            style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
-          >
-            <Plus size={17} />
-            New Case
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+              style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "12px 22px", minHeight: 44 }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+            >
+              <Upload size={17} />
+              Import
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 rounded-md text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "12px 28px", minHeight: 44 }}
+            >
+              <Plus size={17} />
+              New Case
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -622,6 +636,17 @@ export default function Dashboard() {
             navigate(`/case/${newCase.id}/profile`);
           }}
           userId={user?.id}
+        />
+      )}
+
+      {showImport && (
+        <BulkImport
+          onClose={() => setShowImport(false)}
+          onImported={(caseId) => {
+            setShowImport(false);
+            if (caseId) navigate(`/case/${caseId}/profile`);
+            else fetchCases();
+          }}
         />
       )}
     </div>

@@ -1,7 +1,12 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Use ?url import so Vite resolves the worker path at compile time.
+// The old `new URL(specifier, import.meta.url)` pattern broke because pdfjs-dist's
+// fake worker fallback does `import(url)` with @vite-ignore, bypassing Vite's
+// module resolution and causing the browser to fetch a non-existent CDN URL.
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export const ACCEPTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'csv', 'md'];
 

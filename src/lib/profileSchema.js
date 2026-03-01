@@ -56,6 +56,7 @@ export const EMPTY_PROFILE = {
     routines: [],
     travel_patterns: [],
     digital_behavior: [],
+    observations: [],
   },
 
   notes: {

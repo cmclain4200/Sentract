@@ -1,142 +1,5 @@
-import { callAnthropic } from './api';
-
-const SYSTEM_PROMPT = `You are a data extraction system. Your job is to read investigation reports, due diligence documents, or intelligence assessments and extract structured information about the subject(s).
-
-Extract ONLY information that is explicitly stated or clearly implied in the document. Do NOT invent, assume, or hallucinate any data points.
-
-Return a JSON object matching this exact schema. Include only fields where you found data — leave others as empty strings, empty arrays, or null:
-
-{
-  "identity": {
-    "full_name": "",
-    "aliases": [],
-    "date_of_birth": "",
-    "age": null,
-    "nationality": "",
-    "gender": ""
-  },
-  "professional": {
-    "title": "",
-    "organization": "",
-    "organization_type": "",
-    "industry": "",
-    "annual_revenue": "",
-    "education": [{ "institution": "", "degree": "", "year": "" }]
-  },
-  "locations": {
-    "addresses": [{
-      "type": "home|work|vacation|secondary|previous",
-      "label": "",
-      "street": "",
-      "city": "",
-      "state": "",
-      "zip": "",
-      "country": "",
-      "source": "Extracted from uploaded report",
-      "confidence": "confirmed|probable|unverified"
-    }]
-  },
-  "contact": {
-    "phone_numbers": [{ "type": "personal|work", "number": "", "source": "Extracted from uploaded report" }],
-    "email_addresses": [{ "type": "personal|work|legacy", "address": "", "source": "Extracted from uploaded report" }]
-  },
-  "digital": {
-    "social_accounts": [{
-      "platform": "",
-      "handle": "",
-      "url": "",
-      "visibility": "public|private|friends_only|semi_public",
-      "followers": null,
-      "notes": ""
-    }],
-    "data_broker_listings": [{
-      "broker": "",
-      "status": "active|removed",
-      "data_exposed": ""
-    }]
-  },
-  "breaches": {
-    "records": [{
-      "breach_name": "",
-      "date": "",
-      "email_exposed": "",
-      "data_types": [],
-      "severity": "high|medium|low",
-      "notes": ""
-    }]
-  },
-  "network": {
-    "family_members": [{
-      "name": "",
-      "relationship": "",
-      "age": null,
-      "occupation": "",
-      "social_media": [],
-      "notes": ""
-    }],
-    "associates": [{
-      "name": "",
-      "relationship": "",
-      "shared_data_points": [],
-      "notes": ""
-    }]
-  },
-  "public_records": {
-    "properties": [{ "type": "", "address": "", "value": "", "source": "" }],
-    "corporate_filings": [{ "entity": "", "role": "", "jurisdiction": "", "source": "" }],
-    "court_records": [{ "type": "", "case": "", "jurisdiction": "", "summary": "" }],
-    "political_donations": [{ "recipient": "", "amount": "", "date": "", "source": "" }]
-  },
-  "behavioral": {
-    "routines": [{
-      "name": "",
-      "description": "",
-      "schedule": "",
-      "consistency": null,
-      "location": "",
-      "data_source": "",
-      "notes": ""
-    }],
-    "travel_patterns": [{
-      "pattern": "",
-      "frequency": "",
-      "data_source": "",
-      "notes": ""
-    }]
-  },
-  "extraction_summary": {
-    "total_data_points": 0,
-    "sections_populated": [],
-    "confidence_notes": ""
-  }
-}
-
-Return ONLY the JSON object. No markdown, no backticks, no explanation.`;
-
-export async function extractProfileFromText(text) {
-  const truncatedText = text.slice(0, 50000);
-
-  const data = await callAnthropic({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Extract structured profile data from this investigation document:\n\n${truncatedText}`,
-      },
-    ],
-  });
-
-  const textResponse = data.content?.[0]?.text || '';
-
-  const cleaned = textResponse
-    .replace(/```json\n?/g, '')
-    .replace(/```\n?/g, '')
-    .trim();
-
-  return JSON.parse(cleaned);
-}
+// Re-export extraction helpers — SYSTEM_PROMPT and extractProfileFromText moved to engine
+export { runExtraction } from '../engine/modules/extraction';
 
 export function buildExtractionSummary(extracted) {
   const counts = [];
@@ -164,11 +27,12 @@ export function buildExtractionSummary(extracted) {
   if (prCount > 0) counts.push(`${prCount} public record${prCount > 1 ? 's' : ''}`);
   const routineCount = extracted.behavioral?.routines?.length || 0;
   const travelCount = extracted.behavioral?.travel_patterns?.length || 0;
-  if (routineCount + travelCount > 0) counts.push(`${routineCount + travelCount} behavioral pattern${routineCount + travelCount > 1 ? 's' : ''}`);
+  const obsCount = extracted.behavioral?.observations?.length || 0;
+  if (routineCount + travelCount + obsCount > 0) counts.push(`${routineCount + travelCount + obsCount} behavioral pattern${routineCount + travelCount + obsCount > 1 ? 's' : ''}`);
 
   const total = extracted.extraction_summary?.total_data_points ||
     addrCount + phoneCount + emailCount + socialCount + brokerCount +
-    breachCount + familyCount + assocCount + prCount + routineCount + travelCount;
+    breachCount + familyCount + assocCount + prCount + routineCount + travelCount + obsCount;
 
   return { counts, total, sectionsPopulated: counts.length };
 }
@@ -215,6 +79,7 @@ export function mergeExtractedIntoProfile(existing, extracted) {
     ['public_records.political_donations', extracted.public_records?.political_donations],
     ['behavioral.routines', extracted.behavioral?.routines],
     ['behavioral.travel_patterns', extracted.behavioral?.travel_patterns],
+    ['behavioral.observations', extracted.behavioral?.observations],
   ];
 
   arrayMerges.forEach(([path, items]) => {
