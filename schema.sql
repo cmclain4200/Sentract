@@ -73,6 +73,8 @@ create table if not exists public.org_members (
   unique(user_id)
 );
 alter table public.org_members enable row level security;
+-- FK to profiles for PostgREST resource embedding (org_members → profiles join)
+alter table public.org_members add constraint org_members_user_id_profiles_fk foreign key (user_id) references public.profiles(id) on delete cascade;
 create index idx_org_members_org_id on public.org_members(org_id);
 create index idx_org_members_user_id on public.org_members(user_id);
 create index idx_org_members_role_id on public.org_members(role_id);
@@ -139,6 +141,8 @@ create table if not exists public.case_assignments (
   unique(user_id, case_id)
 );
 alter table public.case_assignments enable row level security;
+-- FK to profiles for PostgREST resource embedding
+alter table public.case_assignments add constraint case_assignments_user_id_profiles_fk foreign key (user_id) references public.profiles(id) on delete cascade;
 create index idx_case_assignments_case_id on public.case_assignments(case_id);
 create index idx_case_assignments_user_id on public.case_assignments(user_id);
 
