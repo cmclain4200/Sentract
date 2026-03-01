@@ -157,7 +157,7 @@ export default function TeamManagement() {
         </div>
 
         {/* Sub-tabs: Members | Teams | Invitations */}
-        <div className="flex items-center gap-1 mb-6">
+        <div className="flex items-center gap-3 mb-6">
           {["members", "teams", ...(can("invite_member") ? ["invitations"] : [])].map((tab) => (
             <button
               key={tab}

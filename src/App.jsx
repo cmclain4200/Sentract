@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import CaseView from "./pages/CaseView";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import ConfirmEmail from "./pages/ConfirmEmail";
 import Settings from "./pages/Settings";
 import TeamManagement from "./pages/TeamManagement";
 import Profile from "./features/Profile";
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/confirm-email" element={<ConfirmEmail />} />
           <Route
             element={
               <ProtectedRoute>
