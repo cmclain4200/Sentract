@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase";
 
 export default function Settings() {
   const { user, profile } = useAuth();
-  const { org, can } = useOrg();
+  const { org, can, isOrgOwner } = useOrg();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
@@ -81,16 +81,18 @@ export default function Settings() {
           >
             Profile
           </button>
-          <button
-            onClick={() => navigate("/settings/team")}
-            className="px-4 py-2 rounded text-[13px] font-semibold cursor-pointer"
-            style={{ background: "transparent", border: "1px solid #1e1e1e", color: "#555" }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#555"; }}
-          >
-            Team
-          </button>
-          {org && (
+          {(can("manage_teams") || can("invite_member") || isOrgOwner()) && (
+            <button
+              onClick={() => navigate("/settings/team")}
+              className="px-4 py-2 rounded text-[13px] font-semibold cursor-pointer"
+              style={{ background: "transparent", border: "1px solid #1e1e1e", color: "#555" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#555"; }}
+            >
+              Team
+            </button>
+          )}
+          {isOrgOwner() && org && (
             <button
               onClick={() => navigate("/settings/team")}
               className="px-4 py-2 rounded text-[13px] font-semibold cursor-pointer"

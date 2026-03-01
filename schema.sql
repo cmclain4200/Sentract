@@ -179,13 +179,35 @@ create table if not exists public.assessments (
   scenario_json jsonb,
   score_data jsonb,
   model_used text,
+  status text default 'draft' check (status in ('draft', 'submitted', 'approved', 'rejected', 'published')),
+  reviewer_id uuid references auth.users on delete set null,
+  reviewer_notes text,
+  submitted_at timestamptz,
+  reviewed_at timestamptz,
+  published_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 alter table public.assessments enable row level security;
+create index if not exists idx_assessments_status on public.assessments(status);
+create index if not exists idx_assessments_reviewer_id on public.assessments(reviewer_id);
 create trigger update_assessments_updated_at
   before update on public.assessments
   for each row execute procedure public.update_updated_at();
+
+-- ============================================
+-- 10b. ASSESSMENT COMMENTS
+-- ============================================
+create table if not exists public.assessment_comments (
+  id uuid default gen_random_uuid() primary key,
+  assessment_id uuid references public.assessments on delete cascade not null,
+  user_id uuid references auth.users on delete cascade not null default auth.uid(),
+  content text not null,
+  comment_type text default 'note' check (comment_type in ('note', 'rejection_reason', 'approval_note')),
+  created_at timestamptz default now()
+);
+alter table public.assessment_comments enable row level security;
+create index if not exists idx_assessment_comments_assessment on public.assessment_comments(assessment_id);
 
 -- ============================================
 -- 11. UPLOADS
@@ -369,13 +391,13 @@ create policy "profiles_insert" on public.profiles for insert with check (id = a
 create policy "profiles_update" on public.profiles for update using (id = auth.uid());
 
 -- cases
-create policy "cases_select" on public.cases for select using (public.user_has_case_access(id));
+create policy "cases_select" on public.cases for select using (user_id = auth.uid() or public.user_has_case_access(id));
 create policy "cases_insert" on public.cases for insert with check (auth.uid() = user_id and (public.user_has_permission('create_case') or public.get_user_org_id() is null));
 create policy "cases_update" on public.cases for update using (public.user_has_case_access(id));
 create policy "cases_delete" on public.cases for delete using (public.user_has_case_access(id) and (public.user_has_permission('delete_case') or public.get_user_org_id() is null));
 
 -- subjects
-create policy "subjects_select" on public.subjects for select using (public.user_has_case_access(case_id));
+create policy "subjects_select" on public.subjects for select using (user_id = auth.uid() or public.user_has_case_access(case_id));
 create policy "subjects_insert" on public.subjects for insert with check (public.user_has_case_access(case_id) and (public.user_has_permission('add_subject') or public.get_user_org_id() is null));
 create policy "subjects_update" on public.subjects for update using (public.user_has_case_access(case_id) and (public.user_has_permission('edit_subject') or public.get_user_org_id() is null));
 create policy "subjects_delete" on public.subjects for delete using (public.user_has_case_access(case_id) and (public.user_has_permission('delete_subject') or public.get_user_org_id() is null));
@@ -383,8 +405,13 @@ create policy "subjects_delete" on public.subjects for delete using (public.user
 -- assessments
 create policy "assessments_select" on public.assessments for select using (public.user_has_subject_access(subject_id));
 create policy "assessments_insert" on public.assessments for insert with check (public.user_has_subject_access(subject_id) and (public.user_has_permission('run_assessment') or public.get_user_org_id() is null));
-create policy "assessments_update" on public.assessments for update using (public.user_has_subject_access(subject_id) and (public.user_has_permission('edit_assessment') or public.get_user_org_id() is null));
+create policy "assessments_update" on public.assessments for update using (public.user_has_subject_access(subject_id) and (public.user_has_permission('edit_assessment') or public.user_has_permission('approve_assessment') or public.get_user_org_id() is null));
 create policy "assessments_delete" on public.assessments for delete using (public.user_has_subject_access(subject_id) and (public.user_has_permission('delete_assessment') or public.get_user_org_id() is null));
+
+-- assessment_comments
+create policy "assessment_comments_select" on public.assessment_comments for select using (exists (select 1 from public.assessments a where a.id = assessment_id and public.user_has_subject_access(a.subject_id)));
+create policy "assessment_comments_insert" on public.assessment_comments for insert with check (exists (select 1 from public.assessments a where a.id = assessment_id and public.user_has_subject_access(a.subject_id)));
+create policy "assessment_comments_delete" on public.assessment_comments for delete using (user_id = auth.uid());
 
 -- uploads
 create policy "uploads_select" on public.uploads for select using (public.user_has_subject_access(subject_id));

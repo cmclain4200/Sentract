@@ -8,6 +8,9 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useOrg } from "../contexts/OrgContext";
 import { useNotifications } from "../contexts/NotificationContext";
+import AssessmentStatusBadge from "../components/AssessmentStatusBadge";
+import AssessmentActions from "../components/AssessmentActions";
+import AssessmentComments from "../components/AssessmentComments";
 import { useEngine, buildHeatmapFromRoutines } from "../engine";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -42,7 +45,7 @@ function threatLevel(consistency) {
 export default function PatternLens() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
-  const { can } = useOrg();
+  const { can, isRole } = useOrg();
   const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
@@ -72,7 +75,7 @@ export default function PatternLens() {
     if (!subject?.id) return;
     supabase
       .from("assessments")
-      .select("id, created_at, narrative_output")
+      .select("id, created_at, narrative_output, status, reviewer_notes")
       .eq("subject_id", subject.id)
       .eq("module", "pattern_lens")
       .order("created_at", { ascending: false })
@@ -116,8 +119,9 @@ export default function PatternLens() {
             narrative_output: accumulated,
             model_used: "claude-sonnet-4-20250514",
             data: {},
+            status: isRole("analyst") ? "draft" : "published",
           })
-          .select("id, created_at, narrative_output")
+          .select("id, created_at, narrative_output, status, reviewer_notes")
           .single();
 
         if (saved) setSavedAnalyses((prev) => [saved, ...prev]);
@@ -377,20 +381,21 @@ export default function PatternLens() {
                       <span className="text-[11px] font-mono" style={{ color: "#888" }}>
                         {new Date(a.created_at).toLocaleDateString()}
                       </span>
+                      <AssessmentStatusBadge status={a.status} />
                     </div>
                     <div className="text-[11px]" style={{ color: "#666" }}>
                       {(a.narrative_output || "").slice(0, 80)}...
                     </div>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <button onClick={() => loadAnalysis(a)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
                         style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A" }}>View</button>
-                      {can("delete_assessment") && (
-                        <button onClick={() => deleteAnalysis(a.id)} className="text-[10px] px-2 py-1 rounded cursor-pointer"
-                          style={{ background: "transparent", border: "1px solid #333", color: "#555" }}>
-                          <Trash2 size={9} className="inline" style={{ verticalAlign: "-1px" }} /> Delete
-                        </button>
-                      )}
+                      <AssessmentActions
+                        assessment={a}
+                        onUpdate={(updated) => setSavedAnalyses((prev) => prev.map((x) => x.id === updated.id ? { ...x, ...updated } : x))}
+                        onDelete={(id) => setSavedAnalyses((prev) => prev.filter((x) => x.id !== id))}
+                      />
                     </div>
+                    <AssessmentComments assessmentId={a.id} />
                   </div>
                 ))}
               </div>

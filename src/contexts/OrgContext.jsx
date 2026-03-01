@@ -67,6 +67,8 @@ export function OrgProvider({ children }) {
     return role?.name === "org_owner";
   }, [role]);
 
+  const isRole = useCallback((name) => role?.name === name, [role]);
+
   const myTeams = useCallback(() => {
     if (!user) return [];
     return teams.filter((t) =>
@@ -84,6 +86,7 @@ export function OrgProvider({ children }) {
         loading,
         can,
         isOrgOwner,
+        isRole,
         myTeams,
         refetch: fetchOrgData,
       }}

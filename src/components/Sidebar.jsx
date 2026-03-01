@@ -1,17 +1,24 @@
 import { NavLink, Link } from "react-router-dom";
 import { User, Radio, Shield, Activity, GitMerge, Clock, Network, ArrowLeft } from "lucide-react";
+import { useOrg } from "../contexts/OrgContext";
 
-const modules = [
-  { key: "profile", label: "Profile", icon: User, path: "profile" },
-  { key: "recon", label: "Recon Mirror", icon: Radio, path: "recon" },
-  { key: "aegis", label: "Aegis Score", icon: Shield, path: "aegis" },
-  { key: "patterns", label: "Pattern Lens", icon: Activity, path: "patterns" },
-  { key: "crosswire", label: "CrossWire", icon: GitMerge, path: "crosswire" },
-  { key: "timeline", label: "Timeline", icon: Clock, path: "timeline" },
-  { key: "graph", label: "Link Graph", icon: Network, path: "graph" },
+const allModules = [
+  { key: "profile", label: "Profile", icon: User, path: "profile", alwaysVisible: true },
+  { key: "recon", label: "Recon Mirror", icon: Radio, path: "recon", requiresAssessment: true },
+  { key: "aegis", label: "Aegis Score", icon: Shield, path: "aegis", requiresAssessment: true },
+  { key: "patterns", label: "Pattern Lens", icon: Activity, path: "patterns", requiresAssessment: true },
+  { key: "crosswire", label: "CrossWire", icon: GitMerge, path: "crosswire", requiresAssessment: true },
+  { key: "timeline", label: "Timeline", icon: Clock, path: "timeline", alwaysVisible: true },
+  { key: "graph", label: "Link Graph", icon: Network, path: "graph", alwaysVisible: true },
 ];
 
 export default function Sidebar() {
+  const { can } = useOrg();
+
+  const modules = allModules.filter((mod) => {
+    if (mod.alwaysVisible) return true;
+    return can("run_assessment") || can("approve_assessment");
+  });
   return (
     <div
       className="w-[240px] h-full flex flex-col shrink-0"

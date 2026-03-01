@@ -10,6 +10,11 @@ import SectionHeader from "../components/common/SectionHeader";
 import BulkImport from "../features/import/BulkImport";
 import { CASE_TEMPLATES } from "../lib/caseTemplates";
 import { calculateCasePriority, PRIORITY_COLORS } from "../lib/casePriority";
+import OwnerStatsPanel from "../components/dashboard/OwnerStatsPanel";
+import ManagerWorkloadPanel from "../components/dashboard/ManagerWorkloadPanel";
+import ApprovalQueue from "../components/dashboard/ApprovalQueue";
+import ReviewQueue from "../components/dashboard/ReviewQueue";
+import ClientPortal from "../components/dashboard/ClientPortal";
 
 const CASE_TYPES = [
   { value: "EP", label: "Executive Protection", color: "#09BC8A" },
@@ -34,11 +39,24 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { can, myTeams } = useOrg();
+  const { can, isRole, isOrgOwner, myTeams } = useOrg();
+  const [assignedCaseIds, setAssignedCaseIds] = useState(null);
 
   useEffect(() => {
     fetchCases();
   }, []);
+
+  // For analysts: fetch their case assignments to filter visible cases
+  useEffect(() => {
+    if (!user?.id || !isRole("analyst")) return;
+    supabase
+      .from("case_assignments")
+      .select("case_id")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) setAssignedCaseIds(new Set(data.map((a) => a.case_id)));
+      });
+  }, [user?.id, isRole]);
 
   async function fetchCases() {
     const { data, error } = await supabase
@@ -200,7 +218,10 @@ export default function Dashboard() {
 
   const hiddenCount = cases.filter((c) => c.status === "archived").length;
   const filteredByStatus = statusFilter === "all" ? cases : statusFilter === "closed" ? cases.filter((c) => c.status === "closed") : cases.filter((c) => c.status !== "closed");
-  const visibleCases = showHidden ? filteredByStatus : filteredByStatus.filter((c) => c.status !== "archived");
+  const filteredByRole = isRole("analyst") && assignedCaseIds
+    ? filteredByStatus.filter((c) => assignedCaseIds.has(c.id))
+    : filteredByStatus;
+  const visibleCases = showHidden ? filteredByRole : filteredByRole.filter((c) => c.status !== "archived");
 
   // Priority map for cases
   const casePriorities = useMemo(() => {
@@ -350,13 +371,59 @@ export default function Dashboard() {
     return "rgba(9,188,138,0.25)";
   }
 
+  // Client portal - completely different view
+  if (isRole("client")) {
+    return <ClientPortal />;
+  }
+
+  // Reviewer primary view
+  if (isRole("reviewer")) {
+    return (
+      <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
+        <ReviewQueue />
+        <div className="mt-8">
+          <SectionHeader label="Reference" title="Cases (Read-Only)" />
+          <div className="mt-4 space-y-3">
+            {cases.filter((c) => c.status !== "archived").map((c) => (
+              <div
+                key={c.id}
+                className="surface flex items-center gap-4 cursor-pointer transition-all"
+                style={{ padding: "14px 20px" }}
+                onClick={() => navigate(`/case/${c.id}/profile`)}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
+              >
+                <Briefcase size={14} color={CASE_TYPES.find((t) => t.value === c.type)?.color || "#888"} />
+                <div className="flex-1">
+                  <div className="text-[14px] text-white">{c.name}</div>
+                  <div className="text-[11px] font-mono" style={{ color: "#555" }}>
+                    {c.subjects?.length || 0} subject{(c.subjects?.length || 0) !== 1 ? "s" : ""}
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded"
+                  style={{
+                    color: c.status === "active" ? "#09BC8A" : "#ef4444",
+                    background: c.status === "active" ? "rgba(9,188,138,0.1)" : "rgba(239,68,68,0.1)",
+                  }}
+                >
+                  {c.status?.toUpperCase()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
       <div>
         {/* Header row: title + toggle + new case button */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <SectionHeader label="Dashboard" title="Cases" />
+            <SectionHeader label="Dashboard" title={isRole("analyst") ? "My Cases" : "Cases"} />
             <div className="view-toggle" style={{ marginTop: 24 }}>
               <button className={view === "cases" ? "active" : ""} onClick={() => setView("cases")}>Cases</button>
               <button className={view === "subjects" ? "active" : ""} onClick={() => setView("subjects")}>Subjects</button>
@@ -387,6 +454,10 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
+        {/* Role-specific panels */}
+        {!loading && isOrgOwner() && <OwnerStatsPanel cases={cases} />}
+        {!loading && isRole("team_manager") && <ManagerWorkloadPanel />}
 
         {loading ? (
           <div className="flex items-center gap-2 justify-center py-20">
@@ -842,6 +913,9 @@ export default function Dashboard() {
             )}
           </>
         )}
+
+        {/* Manager approval queue */}
+        {isRole("team_manager") && <ApprovalQueue />}
       </div>
 
       {/* Close case menu on outside click */}
@@ -913,6 +987,7 @@ export default function Dashboard() {
             if (caseId) navigate(`/case/${caseId}/profile`);
             else fetchCases();
           }}
+          userId={user?.id}
           teams={myTeams()}
         />
       )}

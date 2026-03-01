@@ -25,7 +25,7 @@ const ROLE_LABELS = {
 
 export default function TeamManagement() {
   const { user } = useAuth();
-  const { org, role, teams, can, isOrgOwner, refetch } = useOrg();
+  const { org, role, teams, can, isOrgOwner, isRole, myTeams, refetch } = useOrg();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState([]);
@@ -157,7 +157,7 @@ export default function TeamManagement() {
 
         {/* Sub-tabs: Members | Teams | Invitations */}
         <div className="flex items-center gap-1 mb-6">
-          {["members", "teams", "invitations"].map((tab) => (
+          {["members", "teams", ...(can("invite_member") ? ["invitations"] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -199,7 +199,21 @@ export default function TeamManagement() {
             {/* Members Tab */}
             {activeTab === "members" && (
               <div className="space-y-2">
-                {members.map((m) => (
+                {(() => {
+                  // For team_managers: only show members in their teams
+                  let visibleMembers = members;
+                  if (isRole("team_manager")) {
+                    const managedTeamIds = new Set(myTeams().map((t) => t.id));
+                    const managedUserIds = new Set();
+                    teams.forEach((t) => {
+                      if (managedTeamIds.has(t.id)) {
+                        t.team_members?.forEach((tm) => managedUserIds.add(tm.user_id));
+                      }
+                    });
+                    visibleMembers = members.filter((m) => managedUserIds.has(m.user_id));
+                  }
+                  return visibleMembers;
+                })().map((m) => (
                   <div
                     key={m.id}
                     className="surface flex items-center gap-4"

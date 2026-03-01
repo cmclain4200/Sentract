@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 const STEPS = ["Upload", "Map", "Preview", "Import"];
 
-export default function BulkImport({ onClose, onImported, teams = [] }) {
+export default function BulkImport({ onClose, onImported, userId, teams = [] }) {
   const [step, setStep] = useState(0);
   const [fileType, setFileType] = useState(null);
   const [rawData, setRawData] = useState(null);
@@ -103,6 +103,15 @@ export default function BulkImport({ onClose, onImported, teams = [] }) {
           return;
         }
         caseId = newCase.id;
+
+        // Create case assignment for the creator (matches CreateCaseModal)
+        if (userId) {
+          await supabase.from("case_assignments").insert({
+            user_id: userId,
+            case_id: caseId,
+            assigned_by: userId,
+          });
+        }
       }
 
       let created = 0;

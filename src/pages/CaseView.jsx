@@ -16,7 +16,7 @@ import CaseClosureModal from "../components/CaseClosureModal";
 export default function CaseView() {
   const { caseId } = useParams();
   const { user } = useAuth();
-  const { can } = useOrg();
+  const { can, role, isRole } = useOrg();
   const [caseData, setCaseData] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [activeSubject, setActiveSubject] = useState(null);
@@ -308,20 +308,22 @@ export default function CaseView() {
                     Reopen
                   </button>
                 )}
-                <button
-                  onClick={() => setChatOpen(!chatOpen)}
-                  className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
-                  style={{
-                    background: chatOpen ? "#1a1a1a" : "transparent",
-                    border: `1px solid ${chatOpen ? "#09BC8A" : "#333"}`,
-                    color: chatOpen ? "#09BC8A" : "#888",
-                    padding: "6px 14px",
-                    minHeight: 34,
-                  }}
-                >
-                  <MessageSquare size={13} />
-                  Chat
-                </button>
+                {!isRole("client") && (
+                  <button
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{
+                      background: chatOpen ? "#1a1a1a" : "transparent",
+                      border: `1px solid ${chatOpen ? "#09BC8A" : "#333"}`,
+                      color: chatOpen ? "#09BC8A" : "#888",
+                      padding: "6px 14px",
+                      minHeight: 34,
+                    }}
+                  >
+                    <MessageSquare size={13} />
+                    Chat
+                  </button>
+                )}
                 <div className="relative flex">
                   <button
                     onClick={async () => {
@@ -405,7 +407,7 @@ export default function CaseView() {
         <CaseChecklist description={caseData?.description} caseId={caseData?.id} />
 
         <div className="flex-1 overflow-y-auto">
-          <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject }} />
+          <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject, roleName: role?.name }} />
         </div>
       </div>
 
