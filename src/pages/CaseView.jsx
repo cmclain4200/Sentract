@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
-import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
+import { Plus, User, Users, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
 import { generateReportV2 } from "../lib/reportExportV2";
@@ -12,6 +12,7 @@ import { useOrg } from "../contexts/OrgContext";
 import Sidebar from "../components/Sidebar";
 import CaseChat from "../features/chat/CaseChat";
 import CaseClosureModal from "../components/CaseClosureModal";
+import CaseAssignmentModal from "../components/CaseAssignmentModal";
 
 export default function CaseView() {
   const { caseId } = useParams();
@@ -32,6 +33,8 @@ export default function CaseView() {
   const [reportTemplate, setReportTemplate] = useState("full");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showAssignment, setShowAssignment] = useState(false);
+  const [orgMembers, setOrgMembers] = useState([]);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -283,6 +286,24 @@ export default function CaseView() {
             )}
             {activeSubject && (
               <div className="flex items-center gap-2 ml-auto">
+                {can("assign_case") && (
+                  <button
+                    onClick={async () => {
+                      const { data } = await supabase
+                        .from("org_members")
+                        .select("*, roles(name), profiles(full_name)")
+                        .eq("org_id", caseData?.org_id || "");
+                      setOrgMembers(data || []);
+                      setShowAssignment(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "6px 14px", minHeight: 34 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#09BC8A"; e.currentTarget.style.color = "#09BC8A"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+                  >
+                    <Users size={13} /> Assign
+                  </button>
+                )}
                 {caseData?.status === "active" && can("archive_case") && (
                   <button
                     onClick={() => setShowClosureModal(true)}
@@ -488,6 +509,15 @@ export default function CaseView() {
           onClose={() => setShowCreateSubject(false)}
           onCreate={handleCreateSubject}
           isFirst={subjects.length === 0}
+        />
+      )}
+
+      {/* Case Assignment Modal */}
+      {showAssignment && (
+        <CaseAssignmentModal
+          caseId={caseId}
+          members={orgMembers}
+          onClose={() => setShowAssignment(false)}
         />
       )}
 
