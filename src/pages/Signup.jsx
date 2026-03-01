@@ -29,19 +29,16 @@ export default function Signup() {
   useEffect(() => {
     const inviteId = searchParams.get("invite");
     if (!inviteId) return;
-    supabase
-      .from("invitations")
-      .select("*, organizations(name)")
-      .eq("id", inviteId)
-      .eq("status", "pending")
-      .single()
-      .then(({ data }) => {
-        if (data) {
+    fetch(`/api/get-invitation?id=${inviteId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.valid) {
           setInvitation(data);
           setEmail(data.email);
-          setOrganization(data.organizations?.name || "");
+          setOrganization(data.orgName || "");
         }
-      });
+      })
+      .catch(() => {});
   }, [searchParams]);
 
   async function handleSubmit(e) {
@@ -152,7 +149,7 @@ export default function Signup() {
 
           {invitation && (
             <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)", color: "#09BC8A" }}>
-              You've been invited to join <strong>{invitation.organizations?.name}</strong>
+              You've been invited to join <strong>{invitation.orgName}</strong>
             </div>
           )}
 
