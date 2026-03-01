@@ -44,7 +44,7 @@ function useScrollReveal(containerRef, ready = true) {
 }
 
 export default function Landing() {
-  const { user, loading } = useAuth();
+  const { user, loading, emailConfirmed } = useAuth();
   const containerRef = useRef(null);
   const [navScrolled, setNavScrolled] = useState(false);
 
@@ -57,7 +57,7 @@ export default function Landing() {
   }, []);
 
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user && emailConfirmed) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="landing" ref={containerRef}>

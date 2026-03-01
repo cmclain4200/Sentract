@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Login() {
@@ -9,6 +9,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const justConfirmed = searchParams.get("confirmed") === "true";
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -37,6 +39,12 @@ export default function Login() {
             <span className="section-label">Authentication</span>
             <h2 className="text-white text-[24px] font-semibold mt-1">Sign In</h2>
           </div>
+
+          {justConfirmed && (
+            <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)", color: "#09BC8A" }}>
+              Email confirmed. Sign in to continue.
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>

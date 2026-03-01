@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useOrg } from "../contexts/OrgContext";
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, emailConfirmed } = useAuth();
   const { loading: orgLoading } = useOrg();
 
   if (loading || orgLoading) {
@@ -20,6 +20,10 @@ export default function ProtectedRoute({ children }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!emailConfirmed) {
+    return <Navigate to="/confirm-email" replace />;
   }
 
   return children;
