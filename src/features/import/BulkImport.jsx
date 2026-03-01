@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 const STEPS = ["Upload", "Map", "Preview", "Import"];
 
-export default function BulkImport({ isOpen, onClose, onComplete }) {
+export default function BulkImport({ onClose, onImported }) {
   const [step, setStep] = useState(0);
   const [fileType, setFileType] = useState(null);
   const [rawData, setRawData] = useState(null);
@@ -103,8 +103,6 @@ export default function BulkImport({ isOpen, onClose, onComplete }) {
     }
     setImporting(false);
   }
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose}>
@@ -242,7 +240,7 @@ export default function BulkImport({ isOpen, onClose, onComplete }) {
                   <div className="text-[13px]" style={{ color: "#888" }}>
                     Created {importResult.created} of {importResult.total} subjects
                   </div>
-                  <button onClick={() => { onComplete?.(importResult.caseId); onClose(); }} className="mt-6 px-6 py-2.5 rounded text-sm font-semibold cursor-pointer" style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}>
+                  <button onClick={() => { onImported?.(importResult.caseId); }} className="mt-6 px-6 py-2.5 rounded text-sm font-semibold cursor-pointer" style={{ background: "#09BC8A", color: "#0a0a0a", border: "none" }}>
                     View Case
                   </button>
                 </>
