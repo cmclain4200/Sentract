@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload, ArrowLeft, FileText, Filter, Clock, UserPlus, Shield, Brain, Activity } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload, ArrowLeft, FileText, Filter, Clock, UserPlus, Shield, Brain, Activity, Pencil } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [showHidden, setShowHidden] = useState(false);
   const [caseMenu, setCaseMenu] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [renameCase, setRenameCase] = useState(null);
   const [view, setView] = useState("cases");
   const [subjectSort, setSubjectSort] = useState("recent");
   const [showImport, setShowImport] = useState(false);
@@ -182,6 +183,13 @@ export default function Dashboard() {
     setCases((prev) => prev.filter((c) => c.id !== id));
     setConfirmDelete(null);
     setCaseMenu(null);
+  }
+
+  async function handleRenameCase(id, newName) {
+    if (!newName.trim()) return;
+    await supabase.from("cases").update({ name: newName.trim() }).eq("id", id);
+    setCases((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName.trim() } : c)));
+    setRenameCase(null);
   }
 
   function typeColor(type) {
@@ -608,6 +616,16 @@ export default function Dashboard() {
                               style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
                             >
                               <button
+                                onClick={(e) => { e.stopPropagation(); setRenameCase(c); setCaseMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                                style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#888" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                <Pencil size={14} />
+                                <span className="text-[13px]">Rename</span>
+                              </button>
+                              <button
                                 onClick={(e) => { e.stopPropagation(); isHidden ? unhideCase(c.id) : hideCase(c.id); }}
                                 className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
                                 style={{ background: "transparent", border: "none", minHeight: 40, padding: "0 16px", color: "#888" }}
@@ -888,6 +906,14 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {renameCase && (
+        <RenameCaseModal
+          caseData={renameCase}
+          onClose={() => setRenameCase(null)}
+          onRename={handleRenameCase}
+        />
+      )}
     </div>
   );
 }
@@ -907,6 +933,73 @@ function SubjectSparkline({ history }) {
           <Area type="monotone" dataKey="v" stroke="#09BC8A" strokeWidth={1.5} fill="url(#sparkGrad)" dot={false} />
         </AreaChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RenameCaseModal({ caseData, onClose, onRename }) {
+  const [name, setName] = useState(caseData.name);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim() || name.trim() === caseData.name) { onClose(); return; }
+    setLoading(true);
+    await onRename(caseData.id, name.trim());
+    setLoading(false);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="surface w-full fade-in"
+        style={{ maxWidth: 420, padding: "28px 32px" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5">
+          <span className="section-label">Rename Case</span>
+          <h2 className="text-white text-[20px] font-semibold mt-1">Rename "{caseData.name}"</h2>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            autoFocus
+            className="form-input"
+            placeholder="Case name"
+          />
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={loading || !name.trim()}
+              className="flex-1 rounded text-[14px] font-semibold cursor-pointer"
+              style={{
+                background: loading || !name.trim() ? "#1a1a1a" : "#09BC8A",
+                color: loading || !name.trim() ? "#555" : "#0a0a0a",
+                border: "none",
+                padding: "12px 24px",
+                minHeight: 44,
+              }}
+            >
+              {loading ? "Renaming..." : "Rename"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded text-[14px] cursor-pointer"
+              style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "10px 20px", minHeight: 44 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
