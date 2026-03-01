@@ -1158,10 +1158,10 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
     >
       <div
         className="surface w-full fade-in"
-        style={{ maxWidth: 480, padding: "28px 32px" }}
+        style={{ maxWidth: selectedTemplate === null ? 660 : 520, padding: "32px 36px", transition: "max-width 0.2s ease" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <span className="section-label">New Case</span>
             <h2 className="text-white text-[22px] font-semibold mt-1">Create Case</h2>
@@ -1184,17 +1184,17 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
         {/* Template Selection Step */}
         {selectedTemplate === null ? (
           <div>
-            <p className="text-[13px] mb-4" style={{ color: "#666" }}>Choose a template or start blank</p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <p className="text-[14px] mb-5" style={{ color: "#666" }}>Choose a template or start blank</p>
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setSelectedTemplate("blank")}
-                className="p-4 rounded text-left cursor-pointer transition-all"
+                className="p-5 rounded-lg text-left cursor-pointer transition-all"
                 style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#09BC8A")}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
               >
-                <div className="text-[14px] font-semibold text-white mb-1">Blank Case</div>
-                <div className="text-[11px]" style={{ color: "#555" }}>Start from scratch</div>
+                <div className="text-[15px] font-semibold text-white mb-2">Blank Case</div>
+                <div className="text-[12px]" style={{ color: "#555" }}>Start from scratch</div>
               </button>
               {CASE_TEMPLATES.map((t) => (
                 <button
@@ -1204,19 +1204,17 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
                     setType(t.type);
                     setDescription(t.description + "\n\n---\nChecklist:\n" + t.checklist.map((c) => `- [ ] ${c}`).join("\n"));
                   }}
-                  className="p-4 rounded text-left cursor-pointer transition-all"
+                  className="p-5 rounded-lg text-left cursor-pointer transition-all"
                   style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#09BC8A")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[14px] font-semibold text-white">{t.name}</span>
+                  <div className="text-[15px] font-semibold text-white mb-2">{t.name}</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-sm" style={{ color: typeColor(t.type), background: `${typeColor(t.type)}18`, border: `1px solid ${typeColor(t.type)}35` }}>{t.type}</span>
+                    <span className="text-[11px] font-mono" style={{ color: "#555" }}>{t.checklist.length} items</span>
                   </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-sm" style={{ color: typeColor(t.type), background: `${typeColor(t.type)}18`, border: `1px solid ${typeColor(t.type)}35` }}>{t.type}</span>
-                    <span className="text-[10px] font-mono" style={{ color: "#555" }}>{t.checklist.length} items</span>
-                  </div>
-                  <div className="text-[11px] line-clamp-2" style={{ color: "#555" }}>{t.description}</div>
+                  <div className="text-[12px] line-clamp-2" style={{ color: "#555", lineHeight: 1.5 }}>{t.description}</div>
                 </button>
               ))}
             </div>
