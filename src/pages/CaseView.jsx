@@ -256,7 +256,7 @@ export default function CaseView() {
                   <MessageSquare size={13} />
                   Chat
                 </button>
-                <div className="relative">
+                <div className="relative flex">
                   <button
                     onClick={async () => {
                       setExporting(true);
