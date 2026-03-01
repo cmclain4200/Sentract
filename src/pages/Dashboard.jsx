@@ -342,7 +342,7 @@ export default function Dashboard() {
 
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
-      <div className="max-w-7xl mx-auto">
+      <div>
         {/* Header row: title + toggle + new case button */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
