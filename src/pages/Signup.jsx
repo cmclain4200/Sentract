@@ -19,6 +19,13 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // Clear any existing session when landing on signup page
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) supabase.auth.signOut();
+    });
+  }, []);
+
   useEffect(() => {
     const inviteId = searchParams.get("invite");
     if (!inviteId) return;
