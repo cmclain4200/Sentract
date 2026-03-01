@@ -8,10 +8,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [invitation, setInvitation] = useState(null);
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const justConfirmed = searchParams.get("confirmed") === "true";
+  const inviteId = searchParams.get("invite");
 
   // Clear any existing session when landing on login page
   useEffect(() => {
@@ -20,12 +22,44 @@ export default function Login() {
     });
   }, []);
 
+  // Fetch invitation details if invite param present
+  useEffect(() => {
+    if (!inviteId) return;
+    fetch(`/api/get-invitation?id=${inviteId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.valid) {
+          setInvitation(data);
+          setEmail(data.email);
+        }
+      })
+      .catch(() => {});
+  }, [inviteId]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
       await signIn(email, password);
+      // If there's a pending invitation, accept it before navigating
+      if (inviteId) {
+        try {
+          const session = (await supabase.auth.getSession()).data.session;
+          if (session?.access_token) {
+            await fetch("/api/accept-invitation", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ invitation_id: inviteId }),
+            });
+          }
+        } catch {
+          // OrgContext fallback will handle it
+        }
+      }
       navigate("/dashboard");
     } catch (err) {
       setError(err.message);
@@ -47,6 +81,17 @@ export default function Login() {
             <span className="section-label">Authentication</span>
             <h2 className="text-white text-[24px] font-semibold mt-1">Sign In</h2>
           </div>
+
+          {invitation && (
+            <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.08)", border: "1px solid rgba(9,188,138,0.2)" }}>
+              <div style={{ color: "#09BC8A", fontWeight: 600, marginBottom: 4 }}>
+                Joining {invitation.orgName}
+              </div>
+              <div style={{ color: "#555", fontSize: 13 }}>
+                Sign in to accept your invitation.
+              </div>
+            </div>
+          )}
 
           {justConfirmed && (
             <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)", color: "#09BC8A" }}>
@@ -104,14 +149,18 @@ export default function Login() {
                 minHeight: 48,
               }}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in..." : invitation ? "Sign In & Join" : "Sign In"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <span className="text-[14px]" style={{ color: "#555" }}>
               No account?{" "}
-              <Link to="/signup" className="no-underline" style={{ color: "#09BC8A" }}>
+              <Link
+                to={inviteId ? `/signup?invite=${inviteId}` : "/signup"}
+                className="no-underline"
+                style={{ color: "#09BC8A" }}
+              >
                 Create one
               </Link>
             </span>

@@ -1,8 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { Mail, ArrowRight } from "lucide-react";
+import { Mail, ArrowRight, Users, Shield } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+
+const ROLE_LABELS = {
+  org_owner: "Owner",
+  team_manager: "Manager",
+  analyst: "Analyst",
+  reviewer: "Reviewer",
+  client: "Client",
+};
 
 export default function Signup() {
   const [fullName, setFullName] = useState("");
@@ -13,6 +21,8 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [invitation, setInvitation] = useState(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const { signUp, resendConfirmation } = useAuth();
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
@@ -29,6 +39,7 @@ export default function Signup() {
   useEffect(() => {
     const inviteId = searchParams.get("invite");
     if (!inviteId) return;
+    setInviteLoading(true);
     fetch(`/api/get-invitation?id=${inviteId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -38,7 +49,8 @@ export default function Signup() {
           setOrganization(data.orgName || "");
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setInviteLoading(false));
   }, [searchParams]);
 
   async function handleSubmit(e) {
@@ -46,7 +58,12 @@ export default function Signup() {
     setError(null);
     setLoading(true);
     try {
-      const { user } = await signUp(email, password, { full_name: fullName, organization });
+      const inviteId = searchParams.get("invite");
+      const { user } = await signUp(email, password, {
+        full_name: fullName,
+        organization,
+        ...(inviteId ? { invitation_id: inviteId } : {}),
+      });
       // If user is already confirmed (e.g. autoconfirm enabled), go straight to dashboard
       if (user?.email_confirmed_at || user?.confirmed_at) {
         navigate("/dashboard");
@@ -74,6 +91,8 @@ export default function Signup() {
       setResending(false);
     }
   }
+
+  const inviteId = searchParams.get("invite");
 
   // Confirmation pending screen
   if (submitted) {
@@ -133,6 +152,91 @@ export default function Signup() {
     );
   }
 
+  // Invite landing screen — shown before the form when arriving via invite link
+  if (invitation && !showForm) {
+    const roleLabel = ROLE_LABELS[invitation.roleName] || invitation.roleName;
+    return (
+      <div className="h-full flex items-center justify-center" style={{ background: "#0a0a0a" }}>
+        <div className="w-full" style={{ maxWidth: 440 }}>
+          <div className="flex items-center mb-8 justify-center">
+            <img src="/sentract-logo-dark.png" alt="Sentract" style={{ height: 36 }} />
+          </div>
+
+          <div className="surface" style={{ padding: "40px" }}>
+            <div className="flex flex-col items-center text-center">
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
+                style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)" }}
+              >
+                <Users size={28} color="#09BC8A" />
+              </div>
+
+              <span className="section-label mb-2">Invitation</span>
+              <h2 className="text-white text-[22px] font-semibold mb-3">
+                Join {invitation.orgName}
+              </h2>
+
+              <p className="text-[14px] mb-2" style={{ color: "#888", lineHeight: 1.6 }}>
+                You've been invited to join as
+              </p>
+
+              <div
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
+                style={{ background: "rgba(9,188,138,0.08)", border: "1px solid rgba(9,188,138,0.2)" }}
+              >
+                <Shield size={14} color="#09BC8A" />
+                <span className="text-[14px] font-semibold" style={{ color: "#09BC8A" }}>
+                  {roleLabel}
+                </span>
+              </div>
+
+              <div
+                className="w-full rounded px-4 py-3 mb-6 text-[13px] font-mono"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", color: "#555" }}
+              >
+                {invitation.email}
+              </div>
+
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer mb-3"
+                style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "14px 32px", minHeight: 48 }}
+              >
+                Create Account
+              </button>
+
+              <Link
+                to={`/login?invite=${inviteId}`}
+                className="w-full rounded text-[14px] font-semibold transition-all duration-200 cursor-pointer no-underline flex items-center justify-center"
+                style={{
+                  background: "transparent",
+                  color: "#888",
+                  border: "1px solid #1e1e1e",
+                  padding: "12px 24px",
+                  minHeight: 44,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#aaa"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#888"; }}
+              >
+                I already have an account
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading invite data
+  if (inviteId && inviteLoading) {
+    return (
+      <div className="h-full flex items-center justify-center" style={{ background: "#0a0a0a" }}>
+        <div className="text-[14px]" style={{ color: "#555" }}>Loading invitation...</div>
+      </div>
+    );
+  }
+
+  // Signup form
   return (
     <div className="h-full flex items-center justify-center" style={{ background: "#0a0a0a" }}>
       <div className="w-full" style={{ maxWidth: 440 }}>
@@ -144,12 +248,19 @@ export default function Signup() {
         <div className="surface" style={{ padding: "36px 40px" }}>
           <div className="mb-7">
             <span className="section-label">Authentication</span>
-            <h2 className="text-white text-[24px] font-semibold mt-1">Create Account</h2>
+            <h2 className="text-white text-[24px] font-semibold mt-1">
+              {invitation ? "Create Account" : "Create Account"}
+            </h2>
           </div>
 
           {invitation && (
-            <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.1)", border: "1px solid rgba(9,188,138,0.2)", color: "#09BC8A" }}>
-              You've been invited to join <strong>{invitation.orgName}</strong>
+            <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(9,188,138,0.08)", border: "1px solid rgba(9,188,138,0.2)" }}>
+              <div style={{ color: "#09BC8A", fontWeight: 600, marginBottom: 4 }}>
+                Joining {invitation.orgName}
+              </div>
+              <div style={{ color: "#555", fontSize: 13 }}>
+                Fill in your details to complete your account.
+              </div>
             </div>
           )}
 
@@ -167,38 +278,53 @@ export default function Signup() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+                autoFocus
                 className="w-full rounded text-[15px] text-white outline-none transition-colors"
                 style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
                 onFocus={(e) => (e.target.style.borderColor = "#333")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
               />
             </div>
-            <div>
-              <label className="sub-label block mb-2">Organization</label>
-              <input
-                type="text"
-                value={organization}
-                onChange={(e) => setOrganization(e.target.value)}
-                className="w-full rounded text-[15px] text-white outline-none transition-colors"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-                onFocus={(e) => (e.target.style.borderColor = "#333")}
-                onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <label className="sub-label block mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded text-[15px] text-white outline-none transition-colors"
-                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-                onFocus={(e) => (e.target.style.borderColor = "#333")}
-                onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-              />
-            </div>
+            {!invitation && (
+              <div>
+                <label className="sub-label block mb-2">Organization</label>
+                <input
+                  type="text"
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  className="w-full rounded text-[15px] text-white outline-none transition-colors"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  onFocus={(e) => (e.target.style.borderColor = "#333")}
+                  onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                  placeholder="Optional"
+                />
+              </div>
+            )}
+            {invitation ? (
+              <div>
+                <label className="sub-label block mb-2">Email</label>
+                <div
+                  className="w-full rounded text-[15px]"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44, color: "#555" }}
+                >
+                  {email}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="sub-label block mb-2">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full rounded text-[15px] text-white outline-none transition-colors"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  onFocus={(e) => (e.target.style.borderColor = "#333")}
+                  onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                />
+              </div>
+            )}
             <div>
               <label className="sub-label block mb-2">Password</label>
               <input
@@ -225,14 +351,18 @@ export default function Signup() {
                 minHeight: 48,
               }}
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account..." : invitation ? "Join & Create Account" : "Create Account"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <span className="text-[14px]" style={{ color: "#555" }}>
               Already have an account?{" "}
-              <Link to="/login" className="no-underline" style={{ color: "#09BC8A" }}>
+              <Link
+                to={invitation ? `/login?invite=${inviteId}` : "/login"}
+                className="no-underline"
+                style={{ color: "#09BC8A" }}
+              >
                 Sign in
               </Link>
             </span>

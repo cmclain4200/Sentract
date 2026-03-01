@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, Trash2, Mail, Shield, ChevronDown, X, UserPlus, Building2, Copy } from "lucide-react";
+import { Users, Plus, Trash2, Mail, Shield, ChevronDown, X, UserPlus, Building2, Copy, Pencil, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useOrg } from "../contexts/OrgContext";
@@ -36,6 +36,9 @@ export default function TeamManagement() {
   const [showAssignment, setShowAssignment] = useState(null);
   const [activeTab, setActiveTab] = useState("members");
   const [copiedId, setCopiedId] = useState(null);
+  const [editingOrgName, setEditingOrgName] = useState(false);
+  const [orgNameDraft, setOrgNameDraft] = useState("");
+  const [savingOrgName, setSavingOrgName] = useState(false);
 
   useEffect(() => {
     if (!org) return;
@@ -137,7 +140,67 @@ export default function TeamManagement() {
             <div className="flex items-center gap-3">
               <Building2 size={18} color="#09BC8A" />
               <div>
-                <div className="text-[16px] font-semibold text-white">{org.name}</div>
+                {editingOrgName ? (
+                  <form
+                    className="flex items-center gap-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const trimmed = orgNameDraft.trim();
+                      if (!trimmed || trimmed === org.name) { setEditingOrgName(false); return; }
+                      setSavingOrgName(true);
+                      const { error } = await supabase
+                        .from("organizations")
+                        .update({ name: trimmed })
+                        .eq("id", org.id);
+                      setSavingOrgName(false);
+                      if (!error) {
+                        setEditingOrgName(false);
+                        refetch();
+                      }
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={orgNameDraft}
+                      onChange={(e) => setOrgNameDraft(e.target.value)}
+                      autoFocus
+                      className="rounded text-[16px] font-semibold text-white outline-none"
+                      style={{ background: "#0d0d0d", border: "1px solid #333", padding: "4px 10px", width: 240 }}
+                      onKeyDown={(e) => e.key === "Escape" && setEditingOrgName(false)}
+                    />
+                    <button
+                      type="submit"
+                      disabled={savingOrgName}
+                      className="flex items-center justify-center rounded cursor-pointer"
+                      style={{ background: "rgba(9,188,138,0.15)", border: "1px solid rgba(9,188,138,0.3)", width: 32, height: 32 }}
+                    >
+                      <Check size={14} color="#09BC8A" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrgName(false)}
+                      className="flex items-center justify-center rounded cursor-pointer"
+                      style={{ background: "transparent", border: "1px solid #333", width: 32, height: 32 }}
+                    >
+                      <X size={14} color="#555" />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-[16px] font-semibold text-white">{org.name}</div>
+                    {isOrgOwner() && (
+                      <button
+                        onClick={() => { setOrgNameDraft(org.name); setEditingOrgName(true); }}
+                        className="flex items-center justify-center rounded cursor-pointer"
+                        style={{ background: "transparent", border: "none", width: 28, height: 28 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <Pencil size={12} color="#555" />
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="text-[12px] font-mono" style={{ color: "#555" }}>{org.slug}</div>
               </div>
             </div>

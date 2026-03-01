@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
 import { Plus, User, Users, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { generateReport } from "../lib/reportExport";
 import { generateReportV2 } from "../lib/reportExportV2";
 import { REPORT_TEMPLATES } from "../lib/reportTemplates";
 import { syncRelationships } from "../lib/relationshipSync";

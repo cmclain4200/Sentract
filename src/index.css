@@ -1380,23 +1380,36 @@ textarea.form-input {
 .notification-banner-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding: 8px 16px 0;
-  position: relative;
-  z-index: 100;
+  padding: 8px 16px;
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.notification-banner-container > * {
+  pointer-events: auto;
+  max-width: 600px;
+  width: 100%;
 }
 
 .notification-banner {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #111;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(8px);
   border: 1px solid #222;
   border-radius: 6px;
   padding: 10px 14px;
   position: relative;
   overflow: hidden;
   animation: notificationSlideDown 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .notification-exit {
