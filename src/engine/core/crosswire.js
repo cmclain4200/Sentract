@@ -19,6 +19,40 @@ export function detectOverlaps(currentSubject, allSubjects) {
     const otherData = other.profile_data || {};
     const matches = [];
 
+    // Shared phone (highest signal)
+    const currentPhones = new Set(
+      (current.contact?.phone_numbers || [])
+        .map((p) => (p.number || '').replace(/\D/g, '').slice(-10))
+        .filter((n) => n.length >= 7)
+    );
+    for (const p of otherData.contact?.phone_numbers || []) {
+      const normalized = (p.number || '').replace(/\D/g, '').slice(-10);
+      if (normalized.length >= 7 && currentPhones.has(normalized)) {
+        matches.push({
+          type: 'phone',
+          label: p.number,
+          detail: 'Both subjects share the same phone number — high-confidence link',
+        });
+      }
+    }
+
+    // Shared email (highest signal)
+    const currentEmails = new Set(
+      (current.contact?.email_addresses || [])
+        .map((e) => (e.address || '').toLowerCase())
+        .filter(Boolean)
+    );
+    for (const e of otherData.contact?.email_addresses || []) {
+      const addr = (e.address || '').toLowerCase();
+      if (addr && currentEmails.has(addr)) {
+        matches.push({
+          type: 'email',
+          label: e.address,
+          detail: 'Both subjects share the same email address — high-confidence link',
+        });
+      }
+    }
+
     // Shared organization
     if (current.professional?.organization && otherData.professional?.organization) {
       if (current.professional.organization.toLowerCase() === otherData.professional.organization.toLowerCase()) {

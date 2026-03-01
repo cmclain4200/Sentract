@@ -1375,3 +1375,138 @@ textarea.form-input {
 .chat-bubble-assistant .markdown-content p:last-child {
   margin-bottom: 0;
 }
+
+/* ── Notification Banner ── */
+.notification-banner-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 0;
+  position: relative;
+  z-index: 100;
+}
+
+.notification-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 10px 14px;
+  position: relative;
+  overflow: hidden;
+  animation: notificationSlideDown 0.3s ease-out;
+}
+
+.notification-exit {
+  animation: notificationSlideUp 0.25s ease-in forwards;
+}
+
+.notification-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #09BC8A;
+  border-radius: 6px 0 0 6px;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.notification-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.notification-message {
+  font-size: 12px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-view {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #09BC8A;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 3px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.notification-view:hover {
+  background: rgba(9, 188, 138, 0.1);
+}
+
+.notification-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.notification-close:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes notificationSlideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes notificationSlideUp {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-12px); }
+}
+
+/* ── MITRE Badge ── */
+.mitre-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #09BC8A;
+  background: rgba(9, 188, 138, 0.06);
+  border: 1px solid rgba(9, 188, 138, 0.2);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.mitre-badge:hover {
+  background: rgba(9, 188, 138, 0.12);
+  border-color: rgba(9, 188, 138, 0.35);
+  color: #09BC8A;
+}

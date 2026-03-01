@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload, ArrowLeft, FileText, Filter } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
 import { useAuth } from "../contexts/AuthContext";
 import SectionHeader from "../components/common/SectionHeader";
 import BulkImport from "../features/import/BulkImport";
+import { CASE_TEMPLATES } from "../lib/caseTemplates";
+import { calculateCasePriority, PRIORITY_COLORS } from "../lib/casePriority";
 
 const CASE_TYPES = [
   { value: "EP", label: "Executive Protection", color: "#09BC8A" },
@@ -16,6 +19,7 @@ const CASE_TYPES = [
 export default function Dashboard() {
   const [cases, setCases] = useState([]);
   const [aegisScores, setAegisScores] = useState({});
+  const [aegisHistory, setAegisHistory] = useState({});
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
@@ -24,6 +28,7 @@ export default function Dashboard() {
   const [view, setView] = useState("cases");
   const [subjectSort, setSubjectSort] = useState("recent");
   const [showImport, setShowImport] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("active");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -34,28 +39,31 @@ export default function Dashboard() {
   async function fetchCases() {
     const { data, error } = await supabase
       .from("cases")
-      .select("*, subjects(id, name, data_completeness, profile_data, created_at)")
+      .select("*, subjects(id, name, data_completeness, profile_data, created_at, updated_at)")
       .order("created_at", { ascending: false });
     if (!error) {
       setCases(data || []);
-      // Fetch latest Aegis scores for all subjects
+      // Fetch ALL Aegis scores for all subjects (for sparklines + latest)
       const subjectIds = (data || []).flatMap((c) => (c.subjects || []).map((s) => s.id));
       if (subjectIds.length > 0) {
         const { data: scores } = await supabase
           .from("assessments")
-          .select("subject_id, score_data")
+          .select("subject_id, score_data, created_at")
           .eq("module", "aegis_score")
           .in("subject_id", subjectIds)
           .order("created_at", { ascending: false });
         if (scores) {
-          const map = {};
+          const latestMap = {};
+          const historyMap = {};
           for (const s of scores) {
-            // First match per subject_id is the latest (ordered desc)
-            if (!map[s.subject_id] && s.score_data?.composite != null) {
-              map[s.subject_id] = s.score_data.composite;
+            if (s.score_data?.composite != null) {
+              if (!latestMap[s.subject_id]) latestMap[s.subject_id] = s.score_data.composite;
+              if (!historyMap[s.subject_id]) historyMap[s.subject_id] = [];
+              historyMap[s.subject_id].push({ created_at: s.created_at, composite: s.score_data.composite });
             }
           }
-          setAegisScores(map);
+          setAegisScores(latestMap);
+          setAegisHistory(historyMap);
         }
       }
     }
@@ -86,7 +94,35 @@ export default function Dashboard() {
   }
 
   const hiddenCount = cases.filter((c) => c.status === "archived").length;
-  const visibleCases = showHidden ? cases : cases.filter((c) => c.status !== "archived");
+  const filteredByStatus = statusFilter === "all" ? cases : statusFilter === "closed" ? cases.filter((c) => c.status === "closed") : cases.filter((c) => c.status !== "closed");
+  const visibleCases = showHidden ? filteredByStatus : filteredByStatus.filter((c) => c.status !== "archived");
+
+  // Priority map for cases
+  const casePriorities = useMemo(() => {
+    const map = {};
+    for (const c of cases) {
+      map[c.id] = calculateCasePriority(c, c.subjects, aegisScores);
+    }
+    return map;
+  }, [cases, aegisScores]);
+
+  // Sort visible cases - closed always at bottom unless filtered
+  const sortedCases = useMemo(() => {
+    if (subjectSort === "priority" && view === "cases") {
+      return [...visibleCases].sort((a, b) => {
+        if (a.status === "closed" && b.status !== "closed") return 1;
+        if (a.status !== "closed" && b.status === "closed") return -1;
+        return (casePriorities[b.id]?.score || 0) - (casePriorities[a.id]?.score || 0);
+      });
+    }
+    return [...visibleCases].sort((a, b) => {
+      if (statusFilter !== "closed") {
+        if (a.status === "closed" && b.status !== "closed") return 1;
+        if (a.status !== "closed" && b.status === "closed") return -1;
+      }
+      return 0;
+    });
+  }, [visibleCases, subjectSort, view, casePriorities, statusFilter]);
 
   const stats = useMemo(() => {
     const activeCases = cases.filter((c) => c.status !== "archived");
@@ -265,6 +301,19 @@ export default function Dashboard() {
                     </button>
                   </>
                 )}
+                <div className="ml-auto flex items-center gap-2">
+                  <Filter size={11} color="#444" />
+                  {["active", "closed", "all"].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setStatusFilter(f)}
+                      className="text-[11px] font-mono cursor-pointer px-2 py-1 rounded"
+                      style={{ background: statusFilter === f ? "#1a1a1a" : "transparent", border: "none", color: statusFilter === f ? "#09BC8A" : "#444" }}
+                    >
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {view === "subjects" && subjectStats && (
@@ -325,7 +374,7 @@ export default function Dashboard() {
 
             {/* Case Grid */}
             {view === "cases" && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {visibleCases.map((c) => {
+              {sortedCases.map((c) => {
                 const subs = c.subjects || [];
                 const subCount = subs.length;
                 const avgComp = subCount > 0
@@ -358,7 +407,7 @@ export default function Dashboard() {
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = isHidden ? "#1a1a1a" : "#1e1e1e")}
                   >
-                    {/* Top row: type badge + aegis score + menu */}
+                    {/* Top row: type badge + priority + aegis score + menu */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -373,22 +422,46 @@ export default function Dashboard() {
                         >
                           {c.type}
                         </span>
+                        {(() => {
+                          const p = casePriorities[c.id];
+                          if (!p) return null;
+                          const col = PRIORITY_COLORS[p.priority];
+                          return (
+                            <span className="text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded-sm" style={{ color: col, background: `${col}15`, border: `1px solid ${col}30` }}>
+                              {p.priority.toUpperCase()}
+                            </span>
+                          );
+                        })()}
+                        {c.status === "closed" && (
+                          <span className="text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded-sm" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>CLOSED</span>
+                        )}
                         {isHidden && (
                           <span className="text-[10px] font-mono" style={{ color: "#555" }}>HIDDEN</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         {bestAegis != null && (
-                          <span
-                            className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
-                            style={{
-                              color: bestAegis >= 75 ? "#ef4444" : bestAegis >= 55 ? "#f59e0b" : bestAegis >= 35 ? "#3b82f6" : "#09BC8A",
-                              background: bestAegis >= 75 ? "rgba(239,68,68,0.1)" : bestAegis >= 55 ? "rgba(245,158,11,0.1)" : bestAegis >= 35 ? "rgba(59,130,246,0.1)" : "rgba(9,188,138,0.1)",
-                              border: `1px solid ${bestAegis >= 75 ? "rgba(239,68,68,0.2)" : bestAegis >= 55 ? "rgba(245,158,11,0.2)" : bestAegis >= 35 ? "rgba(59,130,246,0.2)" : "rgba(9,188,138,0.2)"}`,
-                            }}
-                          >
-                            {bestAegis}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {(() => {
+                              // Find the subject with best score and render sparkline
+                              const bestSubId = subs.find((s) => aegisScores[s.id] === bestAegis)?.id;
+                              const history = bestSubId ? aegisHistory[bestSubId] : null;
+                              if (history && history.length >= 2) {
+                                return <SubjectSparkline history={history} />;
+                              }
+                              return null;
+                            })()}
+                            <span
+                              className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                              style={{
+                                color: bestAegis >= 75 ? "#ef4444" : bestAegis >= 55 ? "#f59e0b" : bestAegis >= 35 ? "#3b82f6" : "#09BC8A",
+                                background: bestAegis >= 75 ? "rgba(239,68,68,0.1)" : bestAegis >= 55 ? "rgba(245,158,11,0.1)" : bestAegis >= 35 ? "rgba(59,130,246,0.1)" : "rgba(9,188,138,0.1)",
+                                border: `1px solid ${bestAegis >= 75 ? "rgba(239,68,68,0.2)" : bestAegis >= 55 ? "rgba(245,158,11,0.2)" : bestAegis >= 35 ? "rgba(59,130,246,0.2)" : "rgba(9,188,138,0.2)"}`,
+                              }}
+                            >
+                              {bestAegis}
+                            </span>
+                          </div>
                         )}
                         <div className="relative z-10">
                           <button
@@ -523,16 +596,19 @@ export default function Dashboard() {
                           >
                             {s.case_type}
                           </span>
-                          <span
-                            className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
-                            style={{
-                              color: s.aegis != null ? aegisColor(s.aegis) : "#444",
-                              background: s.aegis != null ? aegisBg(s.aegis) : "rgba(255,255,255,0.03)",
-                              border: `1px solid ${s.aegis != null ? aegisBorder(s.aegis) : "#1e1e1e"}`,
-                            }}
-                          >
-                            {s.aegis != null ? s.aegis : "\u2014"}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {aegisHistory[s.id]?.length >= 2 && <SubjectSparkline history={aegisHistory[s.id]} />}
+                            <span
+                              className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded"
+                              style={{
+                                color: s.aegis != null ? aegisColor(s.aegis) : "#444",
+                                background: s.aegis != null ? aegisBg(s.aegis) : "rgba(255,255,255,0.03)",
+                                border: `1px solid ${s.aegis != null ? aegisBorder(s.aegis) : "#1e1e1e"}`,
+                              }}
+                            >
+                              {s.aegis != null ? s.aegis : "\u2014"}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Subject name */}
@@ -653,6 +729,25 @@ export default function Dashboard() {
   );
 }
 
+function SubjectSparkline({ history }) {
+  const data = [...history].reverse().slice(-10).map((h) => ({ v: h.composite }));
+  return (
+    <div style={{ width: 56, height: 24 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
+          <defs>
+            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#09BC8A" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#09BC8A" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area type="monotone" dataKey="v" stroke="#09BC8A" strokeWidth={1.5} fill="url(#sparkGrad)" dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function CreateCaseModal({ onClose, onCreated, userId }) {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -661,6 +756,7 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
   const [autoCreateSubject, setAutoCreateSubject] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -731,95 +827,148 @@ function CreateCaseModal({ onClose, onCreated, userId }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {/* Template Selection Step */}
+        {selectedTemplate === null ? (
           <div>
-            <label className="sub-label block mb-2">Case Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full rounded text-[15px] text-white outline-none"
-              style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-              onFocus={(e) => (e.target.style.borderColor = "#333")}
-              onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-              placeholder="e.g., Mercer EP Assessment"
-            />
-          </div>
-          <div>
-            <label className="sub-label block mb-2">Client Name</label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              className="w-full rounded text-[15px] text-white outline-none"
-              style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-              onFocus={(e) => (e.target.style.borderColor = "#333")}
-              onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-              placeholder="Optional — e.g., Apex Maritime"
-            />
-          </div>
-          <div>
-            <label className="sub-label block mb-2">Type</label>
-            <div className="flex gap-3">
-              {CASE_TYPES.map((t) => (
+            <p className="text-[13px] mb-4" style={{ color: "#666" }}>Choose a template or start blank</p>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={() => setSelectedTemplate("blank")}
+                className="p-4 rounded text-left cursor-pointer transition-all"
+                style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#09BC8A")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+              >
+                <div className="text-[14px] font-semibold text-white mb-1">Blank Case</div>
+                <div className="text-[11px]" style={{ color: "#555" }}>Start from scratch</div>
+              </button>
+              {CASE_TEMPLATES.map((t) => (
                 <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setType(t.value)}
-                  className="flex-1 rounded text-[13px] font-mono font-semibold transition-all duration-150 cursor-pointer"
-                  style={{
-                    background: type === t.value ? `${t.color}18` : "#0d0d0d",
-                    border: `1px solid ${type === t.value ? t.color + "50" : "#1e1e1e"}`,
-                    color: type === t.value ? t.color : "#555",
-                    padding: "10px 12px",
-                    minHeight: 40,
+                  key={t.id}
+                  onClick={() => {
+                    setSelectedTemplate(t);
+                    setType(t.type);
+                    setDescription(t.description + "\n\n---\nChecklist:\n" + t.checklist.map((c) => `- [ ] ${c}`).join("\n"));
                   }}
+                  className="p-4 rounded text-left cursor-pointer transition-all"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#09BC8A")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
                 >
-                  {t.value}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[14px] font-semibold text-white">{t.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-sm" style={{ color: typeColor(t.type), background: `${typeColor(t.type)}18`, border: `1px solid ${typeColor(t.type)}35` }}>{t.type}</span>
+                    <span className="text-[10px] font-mono" style={{ color: "#555" }}>{t.checklist.length} items</span>
+                  </div>
+                  <div className="text-[11px] line-clamp-2" style={{ color: "#555" }}>{t.description}</div>
                 </button>
               ))}
             </div>
           </div>
-          <div>
-            <label className="sub-label block mb-2">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded text-[15px] text-white outline-none resize-none"
-              style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px" }}
-              onFocus={(e) => (e.target.style.borderColor = "#333")}
-              onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
-              placeholder="Optional description..."
-            />
-          </div>
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoCreateSubject}
-              onChange={(e) => setAutoCreateSubject(e.target.checked)}
-              className="accent-[#09BC8A] w-4 h-4"
-            />
-            <span className="text-[14px]" style={{ color: "#888" }}>
-              Auto-create subject from case name
-            </span>
-          </label>
-          <button
-            type="submit"
-            disabled={loading || !name.trim()}
-            className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer"
-            style={{
-              background: loading || !name.trim() ? "#1a1a1a" : "#09BC8A",
-              color: loading || !name.trim() ? "#555" : "#0a0a0a",
-              border: "none",
-              padding: "14px 32px",
-              minHeight: 48,
-            }}
-          >
-            {loading ? "Creating..." : "Create Case"}
-          </button>
-        </form>
+        ) : (
+          <>
+            {selectedTemplate !== "blank" && (
+              <button
+                onClick={() => { setSelectedTemplate(null); setDescription(""); }}
+                className="flex items-center gap-1.5 text-[12px] mb-3 cursor-pointer"
+                style={{ background: "transparent", border: "none", color: "#555" }}
+              >
+                <ArrowLeft size={12} /> Change template
+              </button>
+            )}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <div>
+                <label className="sub-label block mb-2">Case Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full rounded text-[15px] text-white outline-none"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  onFocus={(e) => (e.target.style.borderColor = "#333")}
+                  onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                  placeholder="e.g., Mercer EP Assessment"
+                />
+              </div>
+              <div>
+                <label className="sub-label block mb-2">Client Name</label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="w-full rounded text-[15px] text-white outline-none"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
+                  onFocus={(e) => (e.target.style.borderColor = "#333")}
+                  onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                  placeholder="Optional — e.g., Apex Maritime"
+                />
+              </div>
+              <div>
+                <label className="sub-label block mb-2">Type</label>
+                <div className="flex gap-3">
+                  {CASE_TYPES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setType(t.value)}
+                      className="flex-1 rounded text-[13px] font-mono font-semibold transition-all duration-150 cursor-pointer"
+                      style={{
+                        background: type === t.value ? `${t.color}18` : "#0d0d0d",
+                        border: `1px solid ${type === t.value ? t.color + "50" : "#1e1e1e"}`,
+                        color: type === t.value ? t.color : "#555",
+                        padding: "10px 12px",
+                        minHeight: 40,
+                      }}
+                    >
+                      {t.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="sub-label block mb-2">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded text-[15px] text-white outline-none resize-none"
+                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px" }}
+                  onFocus={(e) => (e.target.style.borderColor = "#333")}
+                  onBlur={(e) => (e.target.style.borderColor = "#1e1e1e")}
+                  placeholder="Optional description..."
+                />
+              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoCreateSubject}
+                  onChange={(e) => setAutoCreateSubject(e.target.checked)}
+                  className="accent-[#09BC8A] w-4 h-4"
+                />
+                <span className="text-[14px]" style={{ color: "#888" }}>
+                  Auto-create subject from case name
+                </span>
+              </label>
+              <button
+                type="submit"
+                disabled={loading || !name.trim()}
+                className="w-full rounded text-[15px] font-semibold transition-all duration-200 cursor-pointer"
+                style={{
+                  background: loading || !name.trim() ? "#1a1a1a" : "#09BC8A",
+                  color: loading || !name.trim() ? "#555" : "#0a0a0a",
+                  border: "none",
+                  padding: "14px 32px",
+                  minHeight: 48,
+                }}
+              >
+                {loading ? "Creating..." : "Create Case"}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ChevronRight, ChevronDown, TrendingDown, TrendingUp, Save, Clock, Trash2, Minus, BarChart3 } from "lucide-react";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
 import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { calculateAegisScore, buildRemediationOptions, simulateRemediation } from "../lib/aegisScore";
@@ -26,6 +26,7 @@ export default function AegisScore() {
   const [saving, setSaving] = useState(false);
   const [benchmark, setBenchmark] = useState(null);
   const [showBenchmark, setShowBenchmark] = useState(false);
+  const [showTrend, setShowTrend] = useState(false);
 
   // Fetch benchmark data
   useEffect(() => {
@@ -353,6 +354,28 @@ export default function AegisScore() {
           </div>
         )}
 
+        {/* Score Trend */}
+        {savedScores.length >= 2 && (
+          <div className="surface p-6 mb-6">
+            <button
+              onClick={() => setShowTrend(!showTrend)}
+              className="w-full flex items-center justify-between cursor-pointer"
+              style={{ background: "transparent", border: "none" }}
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp size={13} color="#09BC8A" />
+                <span className="section-label text-[10px]">Score Trend</span>
+              </div>
+              <ChevronDown size={12} color="#555" style={{ transform: showTrend ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+            </button>
+            {showTrend && (
+              <div className="mt-4 fade-in">
+                <RiskTrendChart savedScores={savedScores} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Score History */}
         {savedScores.length > 0 && (
           <div className="surface p-6">
@@ -492,6 +515,47 @@ function AegisRadarChart({ displayScore, previousScore }) {
             />
           )}
         </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RiskTrendChart({ savedScores }) {
+  const data = [...savedScores].reverse().map((s) => ({
+    date: new Date(s.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    score: s.score_data?.composite ?? 0,
+  }));
+
+  return (
+    <div style={{ width: "100%", height: 200 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id="tealGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#09BC8A" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#09BC8A" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+          <XAxis dataKey="date" tick={{ fill: "#555", fontSize: 11 }} stroke="#1e1e1e" />
+          <YAxis domain={[0, 100]} tick={{ fill: "#555", fontSize: 11 }} stroke="#1e1e1e" />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0a0a0a",
+              border: "1px solid #1e1e1e",
+              borderRadius: "6px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "12px",
+              color: "#fff",
+              padding: "8px 12px",
+            }}
+            formatter={(value) => [`${value}`, "Score"]}
+          />
+          <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="4 3" strokeOpacity={0.4} />
+          <ReferenceLine y={55} stroke="#f59e0b" strokeDasharray="4 3" strokeOpacity={0.4} />
+          <ReferenceLine y={35} stroke="#3b82f6" strokeDasharray="4 3" strokeOpacity={0.4} />
+          <Area type="monotone" dataKey="score" stroke="#09BC8A" strokeWidth={2} fill="url(#tealGradient)" dot={{ r: 3, fill: "#09BC8A", stroke: "#0a0a0a", strokeWidth: 2 }} />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

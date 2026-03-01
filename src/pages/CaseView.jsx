@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
-import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown } from "lucide-react";
+import { Plus, User, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { generateReport } from "../lib/reportExport";
 import { generateReportV2 } from "../lib/reportExportV2";
 import { REPORT_TEMPLATES } from "../lib/reportTemplates";
 import { syncRelationships } from "../lib/relationshipSync";
+import { downloadStixBundle } from "../lib/stixExport";
 import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "../components/Sidebar";
 import CaseChat from "../features/chat/CaseChat";
+import CaseClosureModal from "../components/CaseClosureModal";
 
 export default function CaseView() {
   const { caseId } = useParams();
@@ -23,9 +25,11 @@ export default function CaseView() {
   const [showHiddenSubjects, setShowHiddenSubjects] = useState(false);
   const [subjectMenu, setSubjectMenu] = useState(null);
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
+  const [renameSubject, setRenameSubject] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [reportTemplate, setReportTemplate] = useState("full");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [showClosureModal, setShowClosureModal] = useState(false);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -122,6 +126,14 @@ export default function CaseView() {
     setSubjectMenu(null);
   }
 
+  async function handleRenameSubject(id, newName) {
+    if (!newName.trim()) return;
+    await supabase.from("subjects").update({ name: newName.trim() }).eq("id", id);
+    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, name: newName.trim() } : s)));
+    if (activeSubject?.id === id) setActiveSubject((prev) => ({ ...prev, name: newName.trim() }));
+    setRenameSubject(null);
+  }
+
   const visibleSubjects = showHiddenSubjects ? subjects : subjects.filter((s) => !s.hidden);
   const hiddenSubjectCount = subjects.filter((s) => s.hidden).length;
 
@@ -145,6 +157,15 @@ export default function CaseView() {
     <div className="h-full flex">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Closed case banner */}
+        {caseData?.status === "closed" && (
+          <div className="flex items-center gap-3 px-6 py-2" style={{ background: "rgba(239,68,68,0.05)", borderBottom: "1px solid rgba(239,68,68,0.15)" }}>
+            <Lock size={13} color="#ef4444" />
+            <span className="text-[13px] font-semibold" style={{ color: "#ef4444" }}>CASE CLOSED</span>
+            <span className="text-[11px] font-mono" style={{ color: "#555" }}>{caseData.name}</span>
+          </div>
+        )}
+
         {/* Subject selector bar */}
         {subjects.length > 0 && (
           <div
@@ -191,6 +212,16 @@ export default function CaseView() {
                     className="absolute left-0 top-full mt-1 w-[170px] rounded-md overflow-hidden z-50 fade-in"
                     style={{ background: "#111", border: "1px solid #222", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
                   >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRenameSubject(s); setSubjectMenu(null); }}
+                      className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                      style={{ background: "transparent", border: "none", minHeight: 38, padding: "0 14px", color: "#888" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <Pencil size={13} />
+                      <span className="text-[13px]">Rename</span>
+                    </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); s.hidden ? unhideSubject(s.id) : hideSubject(s.id); }}
                       className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
@@ -242,6 +273,31 @@ export default function CaseView() {
             )}
             {activeSubject && (
               <div className="flex items-center gap-2 ml-auto">
+                {caseData?.status === "active" && (
+                  <button
+                    onClick={() => setShowClosureModal(true)}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "6px 14px", minHeight: 34 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#ef4444"; e.currentTarget.style.color = "#ef4444"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#333"; e.currentTarget.style.color = "#888"; }}
+                  >
+                    <Lock size={13} />
+                    Close Case
+                  </button>
+                )}
+                {caseData?.status === "closed" && (
+                  <button
+                    onClick={async () => {
+                      await supabase.from("cases").update({ status: "active" }).eq("id", caseData.id);
+                      setCaseData((prev) => ({ ...prev, status: "active" }));
+                    }}
+                    className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
+                    style={{ background: "transparent", border: "1px solid #333", color: "#09BC8A", padding: "6px 14px", minHeight: 34 }}
+                  >
+                    <Unlock size={13} />
+                    Reopen
+                  </button>
+                )}
                 <button
                   onClick={() => setChatOpen(!chatOpen)}
                   className="flex items-center gap-1.5 rounded text-[13px] cursor-pointer"
@@ -315,6 +371,18 @@ export default function CaseView() {
                           <span className="text-[11px]" style={{ color: "#555" }}>{t.description}</span>
                         </button>
                       ))}
+                      <div style={{ borderTop: "1px solid #1e1e1e" }}>
+                        <button
+                          onClick={() => { downloadStixBundle(activeSubject, activeSubject.profile_data, caseData); setShowTemplateMenu(false); }}
+                          className="w-full flex flex-col px-4 py-2.5 text-left transition-all cursor-pointer"
+                          style={{ background: "transparent", border: "none" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <span className="text-[13px] flex items-center gap-1.5" style={{ color: "#ccc" }}><Shield size={12} /> Export STIX</span>
+                          <span className="text-[11px]" style={{ color: "#555" }}>IOC bundle in STIX 2.1 format</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -322,6 +390,9 @@ export default function CaseView() {
             )}
           </div>
         )}
+
+        {/* Template Checklist */}
+        <CaseChecklist description={caseData?.description} caseId={caseData?.id} />
 
         <div className="flex-1 overflow-y-auto">
           <Outlet context={{ caseData, subjects, subject: activeSubject, refreshSubject }} />
@@ -390,12 +461,35 @@ export default function CaseView() {
         </div>
       )}
 
+      {/* Rename Subject Modal */}
+      {renameSubject && (
+        <RenameSubjectModal
+          subject={renameSubject}
+          onClose={() => setRenameSubject(null)}
+          onRename={handleRenameSubject}
+        />
+      )}
+
       {/* Create Subject Modal */}
       {showCreateSubject && (
         <CreateSubjectModal
           onClose={() => setShowCreateSubject(false)}
           onCreate={handleCreateSubject}
           isFirst={subjects.length === 0}
+        />
+      )}
+
+      {/* Case Closure Modal */}
+      {showClosureModal && (
+        <CaseClosureModal
+          caseData={caseData}
+          subjects={subjects}
+          aegisScores={{}}
+          onClose={() => setShowClosureModal(false)}
+          onClosed={() => {
+            setShowClosureModal(false);
+            setCaseData((prev) => ({ ...prev, status: "closed" }));
+          }}
         />
       )}
     </div>
@@ -477,6 +571,138 @@ function CreateSubjectModal({ onClose, onCreate, isFirst }) {
                 Cancel
               </button>
             )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CaseChecklist({ description, caseId }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!description) return null;
+  const delimiterIdx = description.indexOf("---\nChecklist:\n");
+  if (delimiterIdx === -1) return null;
+  const checklistText = description.slice(delimiterIdx + "---\nChecklist:\n".length);
+  const items = checklistText.split("\n").filter((l) => l.trim().startsWith("- [")).map((l) => {
+    const checked = l.includes("[x]") || l.includes("[X]");
+    const label = l.replace(/^-\s*\[.\]\s*/, "").trim();
+    return { label, checked };
+  });
+  if (items.length === 0) return null;
+
+  const storageKey = `checklist-${caseId}`;
+  const [checks, setChecks] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : items.map((i) => i.checked);
+    } catch { return items.map((i) => i.checked); }
+  });
+
+  function toggleCheck(idx) {
+    setChecks((prev) => {
+      const next = [...prev];
+      next[idx] = !next[idx];
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const completed = checks.filter(Boolean).length;
+
+  return (
+    <div style={{ borderBottom: "1px solid #1a1a1a", background: "#0d0d0d" }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-6 py-2 cursor-pointer"
+        style={{ background: "transparent", border: "none" }}
+      >
+        <CheckSquare size={13} color="#09BC8A" />
+        <span className="text-[12px] font-mono" style={{ color: "#888" }}>Checklist: {completed}/{items.length}</span>
+        <div className="flex-1 h-1 rounded-full mx-2" style={{ background: "#1a1a1a" }}>
+          <div className="h-full rounded-full" style={{ width: `${(completed / items.length) * 100}%`, background: "#09BC8A", transition: "width 0.3s" }} />
+        </div>
+        <ChevronDown size={12} color="#555" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+      </button>
+      {expanded && (
+        <div className="px-6 pb-3 space-y-1 fade-in">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => toggleCheck(i)}
+              className="w-full flex items-center gap-2.5 py-1.5 text-left cursor-pointer"
+              style={{ background: "transparent", border: "none" }}
+            >
+              {checks[i] ? <CheckSquare size={14} color="#09BC8A" /> : <Square size={14} color="#333" />}
+              <span className="text-[13px]" style={{ color: checks[i] ? "#555" : "#888", textDecoration: checks[i] ? "line-through" : "none" }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RenameSubjectModal({ subject, onClose, onRename }) {
+  const [name, setName] = useState(subject.name);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim() || name.trim() === subject.name) { onClose(); return; }
+    setLoading(true);
+    await onRename(subject.id, name.trim());
+    setLoading(false);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="surface w-full fade-in"
+        style={{ maxWidth: 420, padding: "28px 32px" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5">
+          <span className="section-label">Rename Subject</span>
+          <h2 className="text-white text-[20px] font-semibold mt-1">Rename "{subject.name}"</h2>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            autoFocus
+            className="form-input"
+            placeholder="Subject name"
+          />
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={loading || !name.trim()}
+              className="flex-1 rounded text-[14px] font-semibold cursor-pointer"
+              style={{
+                background: loading || !name.trim() ? "#1a1a1a" : "#09BC8A",
+                color: loading || !name.trim() ? "#555" : "#0a0a0a",
+                border: "none",
+                padding: "12px 24px",
+                minHeight: 44,
+              }}
+            >
+              {loading ? "Renaming..." : "Rename"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded text-[14px] cursor-pointer"
+              style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "10px 20px", minHeight: 44 }}
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </div>

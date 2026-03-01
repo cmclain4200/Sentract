@@ -1,11 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AlertTriangle, GitMerge, User, Database, Shield, Building2, MapPin, Globe, Users, Loader } from "lucide-react";
+import { AlertTriangle, GitMerge, User, Database, Shield, Building2, MapPin, Globe, Users, Loader, Phone, Mail } from "lucide-react";
 import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { fetchAllUserSubjects, detectOverlaps } from "../lib/crosswire";
+import { useNotifications } from "../contexts/NotificationContext";
 
 const TYPE_ICONS = {
+  phone: Phone,
+  email: Mail,
   organization: Building2,
   breach: AlertTriangle,
   data_broker: Database,
@@ -16,6 +19,8 @@ const TYPE_ICONS = {
 };
 
 const TYPE_COLORS = {
+  phone: "#ef4444",
+  email: "#ef4444",
   organization: "#09BC8A",
   breach: "#ef4444",
   data_broker: "#f59e0b",
@@ -26,6 +31,8 @@ const TYPE_COLORS = {
 };
 
 const TYPE_LABELS = {
+  phone: "Phone",
+  email: "Email",
   organization: "Organization",
   breach: "Breach",
   data_broker: "Data Broker",
@@ -37,12 +44,17 @@ const TYPE_LABELS = {
 
 export default function CrossWire() {
   const { subject, caseData } = useOutletContext();
+  const { notify } = useNotifications();
+  const notifiedRef = useRef(false);
   const profileData = subject?.profile_data || {};
   const completeness = calculateCompleteness(profileData);
 
   const [allSubjects, setAllSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Reset notification flag when subject changes
+  useEffect(() => { notifiedRef.current = false; }, [subject?.id]);
 
   useEffect(() => {
     if (!subject?.id) return;
@@ -62,6 +74,24 @@ export default function CrossWire() {
     if (!subject || allSubjects.length === 0) return [];
     return detectOverlaps(subject, allSubjects);
   }, [subject, allSubjects]);
+
+  // Fire notification for high-priority overlaps
+  useEffect(() => {
+    if (notifiedRef.current || overlaps.length === 0) return;
+    const HIGH_SIGNAL_TYPES = new Set(["phone", "email", "direct_link"]);
+    const highPriority = overlaps.filter(
+      (o) => o.matchCount >= 3 || o.matches.some((m) => HIGH_SIGNAL_TYPES.has(m.type))
+    );
+    if (highPriority.length > 0) {
+      notifiedRef.current = true;
+      notify({
+        type: "crosswire",
+        title: "CrossWire Alert",
+        message: `${highPriority.length} high-priority overlap${highPriority.length !== 1 ? "s" : ""} detected`,
+        link: `/case/${caseData?.id}/crosswire`,
+      });
+    }
+  }, [overlaps, caseData?.id, notify]);
 
   const totalMatches = overlaps.reduce((sum, o) => sum + o.matchCount, 0);
 

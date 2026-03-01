@@ -10,11 +10,13 @@ import { countDataPoints } from "../lib/profileToPrompt";
 import { geocodeProfileLocations, formatGeocodedLocations } from "../lib/geocode";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../contexts/NotificationContext";
 import { useEngine, ADVERSARY_TYPES, OBJECTIVES, SOPHISTICATION_LEVELS } from "../engine";
 import SourceLinkedNarrative from "../components/recon/SourceLinkedNarrative";
 import ThreatActorCard from "../components/recon/ThreatActorCard";
 import CountermeasurePanel from "../components/recon/CountermeasurePanel";
 import { extractCountermeasures } from "../components/recon/countermeasureUtils";
+import { mapPhasesToMitre, mapVulnerabilitiesToMitre, collectAllMitreTechniques } from "../lib/mitreMapping";
 
 const LOADING_MESSAGES = [
   'Analyzing subject exposure profile...',
@@ -30,6 +32,7 @@ const DELIMITER = "---SCENARIO_JSON---";
 export default function ReconMirror() {
   const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
   const completeness = calculateCompleteness(profileData);
@@ -315,6 +318,12 @@ export default function ReconMirror() {
         }
         setSourceLinks(links || []);
         setIsGenerating(false);
+        notify({
+          type: "recon_mirror",
+          title: "Recon Mirror complete",
+          message: parsedAssessment?.title || "Adversarial assessment ready",
+          link: `/case/${caseData?.id}/recon`,
+        });
       };
       if (elapsed < 4000) {
         setTimeout(reveal, 4000 - elapsed);
@@ -678,6 +687,11 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
   // During phased reveal, only show phases up to revealedPhases; -1 means show all
   const phases = revealedPhases === -1 ? allPhases : allPhases.slice(0, revealedPhases + 1);
 
+  // MITRE mapping
+  const mappedPhases = useMemo(() => mapPhasesToMitre(phases), [phases]);
+  const mappedVulns = useMemo(() => mapVulnerabilitiesToMitre(assessment.critical_vulnerabilities), [assessment.critical_vulnerabilities]);
+  const mitreSummary = useMemo(() => collectAllMitreTechniques(mappedPhases, mappedVulns), [mappedPhases, mappedVulns]);
+
   return (
     <div className="markdown-content fade-in">
       {/* Title + Overall Threat Level */}
@@ -697,7 +711,7 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
       )}
 
       {/* Phases */}
-      {phases.map((phase, i) => {
+      {mappedPhases.map((phase, i) => {
         const isActive = i === activePhase;
         return (
           <div
@@ -728,6 +742,23 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
                 <p>{highlightEntities(phase.narrative)}</p>
               )}
             </div>
+            {phase.mitre_techniques?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {phase.mitre_techniques.map((t) => (
+                  <a
+                    key={t.id}
+                    href={`https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mitre-badge"
+                    title={`${t.name} (${t.tactic})`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t.id}
+                  </a>
+                ))}
+              </div>
+            )}
             {phase.countermeasure && (
               <div className="narrative-countermeasure">
                 <div className="countermeasure-label">Countermeasure</div>
@@ -739,10 +770,10 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
       })}
 
       {/* Critical Vulnerabilities */}
-      {assessment.critical_vulnerabilities?.length > 0 && (
+      {mappedVulns?.length > 0 && (
         <div className="mt-8">
           <h2>Critical Vulnerabilities</h2>
-          {assessment.critical_vulnerabilities.map((vuln, i) => (
+          {mappedVulns.map((vuln, i) => (
             <div key={i} className="vuln-card">
               <div className="flex items-center gap-2 mb-2">
                 <span className={`vuln-severity ${getVulnSeverityClass(vuln.severity)}`}>{vuln.severity}</span>
@@ -754,6 +785,15 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
                 </div>
               )}
               <div className="text-[14px] mb-3" style={{ color: "#ccc", lineHeight: 1.6 }}>{vuln.risk_mechanism}</div>
+              {vuln.mitre_techniques?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {vuln.mitre_techniques.map((t) => (
+                    <a key={t.id} href={`https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/`} target="_blank" rel="noopener noreferrer" className="mitre-badge" title={`${t.name} (${t.tactic})`} onClick={(e) => e.stopPropagation()}>
+                      {t.id}
+                    </a>
+                  ))}
+                </div>
+              )}
               {vuln.countermeasure && (
                 <div className="narrative-countermeasure">
                   <div className="countermeasure-label">Countermeasure</div>
@@ -811,6 +851,27 @@ function AssessmentRenderer({ assessment, activePhase, onPhaseClick, phaseRefs, 
               </ul>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MITRE ATT&CK Coverage */}
+      {Object.keys(mitreSummary).length > 0 && (
+        <div className="mt-8">
+          <h2>MITRE ATT&CK Coverage</h2>
+          <div className="space-y-4">
+            {Object.entries(mitreSummary).map(([tactic, techniques]) => (
+              <div key={tactic}>
+                <div className="text-[11px] font-mono font-semibold tracking-wider mb-2" style={{ color: "#09BC8A" }}>{tactic.toUpperCase()}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {techniques.map((t) => (
+                    <a key={t.id} href={`https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/`} target="_blank" rel="noopener noreferrer" className="mitre-badge" title={t.name}>
+                      {t.id} — {t.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

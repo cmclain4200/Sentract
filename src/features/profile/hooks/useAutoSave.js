@@ -8,6 +8,7 @@ export default function useAutoSave(subjectId, userId, showToast) {
   const saveTimeout = useRef(null);
   const latestProfile = useRef(null);
   const prevSyncData = useRef(null);
+  const snapshotSaved = useRef(false);
 
   // Keep ref in sync
   function updateRef(profile) {
@@ -55,6 +56,18 @@ export default function useAutoSave(subjectId, userId, showToast) {
         } else {
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus("idle"), 2000);
+
+          // Save profile snapshot (once per session) for anomaly detection
+          if (!snapshotSaved.current && userId) {
+            snapshotSaved.current = true;
+            supabase.from("assessments").insert({
+              subject_id: subjectId,
+              user_id: userId,
+              type: "profile_snapshot",
+              module: "profile_snapshot",
+              data: { profile_data: data },
+            }).then(() => {});
+          }
 
           // Check if network or professional fields changed — fire sync if so
           const syncKey = JSON.stringify({

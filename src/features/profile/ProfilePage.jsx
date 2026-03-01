@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
-import { Check, Search, Zap } from "lucide-react";
+import { Check, Search, Zap, AlertCircle } from "lucide-react";
 import SectionHeader from "../../components/common/SectionHeader";
 import { EMPTY_PROFILE } from "../../lib/profileSchema";
 import { calculateCompleteness } from "../../lib/profileCompleteness";
 import { useAuth } from "../../contexts/AuthContext";
+import { useNotifications } from "../../contexts/NotificationContext";
 import { useToast } from "../../components/Toast";
 import { deepMerge } from "./utils";
 import useAutoSave from "./hooks/useAutoSave";
@@ -23,6 +24,10 @@ import NetworkSection from "./tabs/NetworkSection";
 import PublicRecordsSection from "./tabs/PublicRecordsSection";
 import BehavioralSection from "./tabs/BehavioralSection";
 import NotesSection from "./tabs/NotesSection";
+import MonitoringPanel from "../monitoring/MonitoringPanel";
+import { getProfileFreshness } from "../../lib/dataFreshness";
+import { detectAnomalies } from "../../lib/anomalyDetection";
+import { supabase } from "../../lib/supabase";
 
 const TABS = [
   { key: "identity", label: "Identity" },
@@ -39,6 +44,7 @@ const TABS = [
 export default function ProfilePage() {
   const { caseData, subjects, subject, refreshSubject } = useOutletContext();
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const { showToast, ToastContainer } = useToast();
 
   const [profile, setProfile] = useState(() => {
@@ -56,7 +62,7 @@ export default function ProfilePage() {
   // Hooks
   const { saveStatus, autoSave, flushSave, updateRef } = useAutoSave(subject?.id, user?.id, showToast);
   const { enriching, setEnriching, runAll } = useEnrichment();
-  const { uploadState, uploadError, extractionResult, handleFileUpload, applyExtraction, discardExtraction, setUploadState } = useFileUpload(subject?.id);
+  const { uploadState, uploadError, extractionResult, handleFileUpload, applyExtraction, discardExtraction, setUploadState } = useFileUpload(subject?.id, caseData?.id);
 
   // Reset all state when subject changes
   useEffect(() => {
@@ -76,6 +82,36 @@ export default function ProfilePage() {
 
   const completeness = calculateCompleteness(profile);
   const emailCount = (profile.contact?.email_addresses || []).filter((e) => e.address).length;
+
+  // Freshness tracking
+  const freshness = useMemo(() => getProfileFreshness(profile, subject?.updated_at), [profile, subject?.updated_at]);
+  const hasStale = useMemo(() => Object.values(freshness).some((f) => f.status === "stale"), [freshness]);
+
+  // Anomaly detection
+  const [anomalies, setAnomalies] = useState([]);
+  const [showAnomalies, setShowAnomalies] = useState(false);
+  const anomalyFetched = useRef(false);
+
+  useEffect(() => {
+    if (!subject?.id || anomalyFetched.current) return;
+    anomalyFetched.current = true;
+    supabase
+      .from("assessments")
+      .select("data")
+      .eq("subject_id", subject.id)
+      .eq("module", "profile_snapshot")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data?.length > 0 && data[0].data?.profile_data) {
+          const detected = detectAnomalies(profile, data[0].data.profile_data);
+          setAnomalies(detected);
+        }
+      });
+  }, [subject?.id]);
+
+  // Reset anomaly flag on subject change
+  useEffect(() => { anomalyFetched.current = false; setAnomalies([]); }, [subject?.id]);
 
   const updateProfile = useCallback((updater) => {
     setProfile((prev) => {
@@ -99,6 +135,12 @@ export default function ProfilePage() {
     try {
       const result = await runAll(profile, updateProfile);
       showToast(result.summary);
+      notify({
+        type: "enrichment",
+        title: "Enrichment complete",
+        message: result.summary,
+        link: caseData?.id ? `/case/${caseData.id}/profile` : undefined,
+      });
     } catch {
       showToast("Enrichment failed");
     } finally {
@@ -191,6 +233,11 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Continuous Monitoring */}
+      {subject && emailCount > 0 && (
+        <MonitoringPanel subjectId={subject.id} profile={profile} />
+      )}
+
       {/* Upload Bar */}
       {showUpload && (
         <UploadBar
@@ -205,6 +252,52 @@ export default function ProfilePage() {
         />
       )}
 
+      {/* Stale Data Banner */}
+      {hasStale && (
+        <div className="flex items-center gap-3 p-3 rounded mb-4" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
+          <AlertCircle size={16} color="#ef4444" />
+          <span className="text-[13px]" style={{ color: "#ef4444" }}>Some profile sections have stale data (&gt;90 days old)</span>
+          <button
+            onClick={handleRunAll}
+            disabled={enriching}
+            className="ml-auto text-[12px] font-semibold px-3 py-1 rounded cursor-pointer"
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}
+          >
+            Re-validate
+          </button>
+        </div>
+      )}
+
+      {/* Anomaly Banner */}
+      {anomalies.length > 0 && (
+        <div className="rounded mb-4" style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.15)" }}>
+          <button
+            onClick={() => setShowAnomalies(!showAnomalies)}
+            className="w-full flex items-center gap-3 p-3 cursor-pointer"
+            style={{ background: "transparent", border: "none" }}
+          >
+            <AlertCircle size={16} color="#f59e0b" />
+            <span className="text-[13px]" style={{ color: "#f59e0b" }}>{anomalies.length} change{anomalies.length !== 1 ? "s" : ""} detected since last review</span>
+            <span className="text-[11px] ml-auto" style={{ color: "#555" }}>{showAnomalies ? "Hide" : "Show"}</span>
+          </button>
+          {showAnomalies && (
+            <div className="px-3 pb-3 space-y-1.5 fade-in">
+              {anomalies.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded" style={{ background: "#0d0d0d" }}>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-sm" style={{
+                    color: a.severity === "high" ? "#ef4444" : a.severity === "medium" ? "#f59e0b" : "#555",
+                    background: a.severity === "high" ? "rgba(239,68,68,0.1)" : a.severity === "medium" ? "rgba(245,158,11,0.1)" : "rgba(255,255,255,0.03)",
+                  }}>
+                    {a.severity.toUpperCase()}
+                  </span>
+                  <span className="text-[12px]" style={{ color: "#888" }}>{a.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab Bar */}
       <div className="profile-tabs mb-6">
         {TABS.map((tab) => (
@@ -214,6 +307,12 @@ export default function ProfilePage() {
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.label}
+            {freshness[tab.key] && (
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full ml-1.5"
+                style={{ background: freshness[tab.key].color, verticalAlign: "middle" }}
+              />
+            )}
           </button>
         ))}
       </div>

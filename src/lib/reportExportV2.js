@@ -1,5 +1,7 @@
 import { jsPDF } from "jspdf";
 import { calculateAegisScore, buildRemediationOptions } from "./aegisScore";
+import { REPORT_TEMPLATES } from "./reportTemplates";
+import { fetchAllUserSubjects, detectOverlaps } from "./crosswire";
 
 function stripMarkdown(md) {
   if (!md) return "";
@@ -84,7 +86,7 @@ export async function generateReportV2({ subject, caseData, profileData, supabas
   const aegis = calculateAegisScore(profileData);
   const exposures = buildKeyExposures(profileData);
   const now = new Date();
-  const pages = template === "executive" ? ["cover", "executive_summary", "aegis_detail", "recommendations"] : template === "briefing" ? ["cover", "executive_summary"] : ["cover", "executive_summary", "subject_overview", "digital_exposure", "behavioral_analysis", "aegis_detail", "recon_mirror", "recommendations", "methodology"];
+  const pages = REPORT_TEMPLATES[template]?.pages || REPORT_TEMPLATES.full.pages;
 
   let pageNum = 0;
 
@@ -431,6 +433,102 @@ export async function generateReportV2({ subject, caseData, profileData, supabas
         doc.text(`Score reduction: -${opt.scoreReduction}`, margin + 6, y);
         y += 7;
         if (y > 265) break;
+      }
+    }
+  }
+
+  // ── PATTERN ANALYSIS ──
+  if (pages.includes("pattern_analysis")) {
+    doc.addPage();
+    pageNum++;
+    drawHeader(doc, "Pattern Analysis", pageNum);
+    let y = 28;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(255);
+    doc.text("Behavioral Pattern Analysis", margin, y);
+    y += 12;
+    let patternNarrative = null;
+    if (subject?.id) {
+      const { data } = await supabase.from("assessments").select("narrative_output").eq("subject_id", subject.id).eq("module", "pattern_lens").order("created_at", { ascending: false }).limit(1);
+      if (data && data.length > 0) patternNarrative = data[0].narrative_output;
+    }
+    if (patternNarrative) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(180);
+      const lines = wrapText(doc, stripMarkdown(patternNarrative), contentWidth);
+      for (const line of lines) {
+        if (y > 275) { doc.addPage(); pageNum++; drawHeader(doc, "Pattern Analysis", pageNum); y = 28; }
+        doc.text(line, margin, y);
+        y += 4;
+      }
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(150);
+      doc.text("No Pattern Lens assessment has been generated for this subject.", margin, y);
+    }
+  }
+
+  // ── CROSSWIRE SUMMARY ──
+  if (pages.includes("crosswire_summary")) {
+    doc.addPage();
+    pageNum++;
+    drawHeader(doc, "CrossWire Summary", pageNum);
+    let y = 28;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(255);
+    doc.text("Cross-Case Connection Analysis", margin, y);
+    y += 14;
+    let overlaps = [];
+    try {
+      const allSubs = await fetchAllUserSubjects();
+      if (subject && allSubs.length > 1) {
+        overlaps = detectOverlaps(subject, allSubs);
+      }
+    } catch {}
+    if (overlaps.length === 0) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(150);
+      doc.text("No cross-case overlaps detected.", margin, y);
+    } else {
+      const highPriority = overlaps.some((o) => o.matchCount >= 3 || o.matches.some((m) => m.type === "phone" || m.type === "email" || m.type === "direct_link"));
+      if (highPriority) {
+        doc.setFillColor(239, 68, 68);
+        doc.rect(margin, y - 4, contentWidth, 10, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(255);
+        doc.text("HIGH-PRIORITY MATCHES DETECTED", margin + 4, y + 2);
+        y += 14;
+      }
+      // Table header
+      doc.setFillColor(20, 20, 20);
+      doc.rect(margin, y - 4, contentWidth, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(0, 212, 170);
+      doc.text("SUBJECT", margin + 4, y);
+      doc.text("CASE", margin + 60, y);
+      doc.text("MATCHES", margin + 115, y);
+      doc.text("TYPES", margin + 138, y);
+      y += 8;
+      for (const o of overlaps) {
+        if (y > 270) break;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(200);
+        doc.text((o.subject.name || "Unknown").slice(0, 25), margin + 4, y);
+        doc.text((o.caseName || "").slice(0, 25), margin + 60, y);
+        doc.text(String(o.matchCount), margin + 115, y);
+        const types = [...new Set(o.matches.map((m) => m.type))].join(", ");
+        doc.text(types.slice(0, 30), margin + 138, y);
+        doc.setDrawColor(30);
+        doc.line(margin, y + 2, margin + contentWidth, y + 2);
+        y += 7;
       }
     }
   }
