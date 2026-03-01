@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload, ArrowLeft, FileText, Filter } from "lucide-react";
+import { Plus, X, Briefcase, Users, BarChart3, MoreVertical, Eye, EyeOff, Trash2, AlertTriangle, Target, Upload, ArrowLeft, FileText, Filter, Clock, UserPlus, Shield, Brain, Activity } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { supabase } from "../lib/supabase";
 import { syncRelationships } from "../lib/relationshipSync";
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [subjectSort, setSubjectSort] = useState("recent");
   const [showImport, setShowImport] = useState(false);
   const [statusFilter, setStatusFilter] = useState("active");
+  const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -66,8 +67,102 @@ export default function Dashboard() {
           setAegisHistory(historyMap);
         }
       }
+      // Fetch recent activity from multiple tables
+      fetchActivity(data || []);
     }
     setLoading(false);
+  }
+
+  async function fetchActivity(casesData) {
+    const caseMap = {};
+    for (const c of casesData) {
+      caseMap[c.id] = c.name;
+      for (const s of c.subjects || []) caseMap[s.id] = { caseName: c.name, caseId: c.id };
+    }
+    const subjectIds = casesData.flatMap((c) => (c.subjects || []).map((s) => s.id));
+    const items = [];
+
+    // Case creation events
+    for (const c of casesData) {
+      items.push({
+        id: `case-${c.id}`,
+        type: "case_created",
+        label: "Case created",
+        caseName: c.name,
+        caseId: c.id,
+        time: c.created_at,
+      });
+    }
+
+    // Subject creation events
+    for (const c of casesData) {
+      for (const s of c.subjects || []) {
+        items.push({
+          id: `subj-${s.id}`,
+          type: "subject_added",
+          label: `Subject added: ${s.name}`,
+          caseName: c.name,
+          caseId: c.id,
+          time: s.created_at,
+        });
+      }
+    }
+
+    // Recent assessments
+    if (subjectIds.length > 0) {
+      const { data: assessments } = await supabase
+        .from("assessments")
+        .select("id, subject_id, module, type, created_at")
+        .in("subject_id", subjectIds)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (assessments) {
+        const moduleLabels = {
+          aegis_score: "Aegis Score generated",
+          recon_mirror: "Recon Mirror assessment",
+          pattern_lens: "Pattern Lens analysis",
+          profile_snapshot: "Profile snapshot saved",
+        };
+        for (const a of assessments) {
+          if (a.module === "profile_snapshot") continue;
+          const info = caseMap[a.subject_id];
+          items.push({
+            id: `assess-${a.id}`,
+            type: "assessment",
+            label: moduleLabels[a.module] || `Assessment: ${a.module}`,
+            caseName: info?.caseName || "Unknown",
+            caseId: info?.caseId,
+            time: a.created_at,
+          });
+        }
+      }
+    }
+
+    // Recent uploads
+    if (subjectIds.length > 0) {
+      const { data: uploads } = await supabase
+        .from("uploads")
+        .select("id, subject_id, file_name, created_at")
+        .in("subject_id", subjectIds)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (uploads) {
+        for (const u of uploads) {
+          const info = caseMap[u.subject_id];
+          items.push({
+            id: `upload-${u.id}`,
+            type: "upload",
+            label: `File imported: ${u.file_name}`,
+            caseName: info?.caseName || "Unknown",
+            caseId: info?.caseId,
+            time: u.created_at,
+          });
+        }
+      }
+    }
+
+    items.sort((a, b) => new Date(b.time) - new Date(a.time));
+    setRecentActivity(items.slice(0, 30));
   }
 
   async function hideCase(id) {
@@ -197,6 +292,40 @@ export default function Dashboard() {
     return "#09BC8A";
   }
 
+  function activityIcon(type) {
+    switch (type) {
+      case "case_created": return <Briefcase size={13} color="#09BC8A" />;
+      case "subject_added": return <UserPlus size={13} color="#3b82f6" />;
+      case "assessment": return <Shield size={13} color="#f59e0b" />;
+      case "upload": return <Upload size={13} color="#8b5cf6" />;
+      default: return <Clock size={13} color="#555" />;
+    }
+  }
+
+  function activityIconBg(type) {
+    switch (type) {
+      case "case_created": return "rgba(9,188,138,0.1)";
+      case "subject_added": return "rgba(59,130,246,0.1)";
+      case "assessment": return "rgba(245,158,11,0.1)";
+      case "upload": return "rgba(139,92,246,0.1)";
+      default: return "rgba(255,255,255,0.03)";
+    }
+  }
+
+  function formatActivityTime(time) {
+    const d = new Date(time);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString();
+  }
+
   function aegisBg(score) {
     if (score >= 75) return "rgba(239,68,68,0.1)";
     if (score >= 55) return "rgba(249,115,22,0.1)";
@@ -213,7 +342,7 @@ export default function Dashboard() {
 
   return (
     <div className="h-full overflow-y-auto" style={{ padding: "32px" }}>
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header row: title + toggle + new case button */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -373,7 +502,7 @@ export default function Dashboard() {
             )}
 
             {/* Case Grid */}
-            {view === "cases" && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {view === "cases" && <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {sortedCases.map((c) => {
                 const subs = c.subjects || [];
                 const subCount = subs.length;
@@ -397,8 +526,8 @@ export default function Dashboard() {
                     style={{
                       background: "#111",
                       border: `1px solid ${isHidden ? "#1a1a1a" : "#1e1e1e"}`,
-                      padding: "20px 22px",
-                      minHeight: 160,
+                      padding: "24px 26px",
+                      minHeight: 190,
                       opacity: isHidden ? 0.5 : 1,
                       position: "relative",
                       zIndex: caseMenu === c.id ? 50 : undefined,
@@ -562,7 +691,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {allSubjects.map((s) => {
                     const comp = s.data_completeness || 0;
                     const prof = s.profile_data?.professional;
@@ -575,8 +704,8 @@ export default function Dashboard() {
                         style={{
                           background: "#111",
                           border: "1px solid #1e1e1e",
-                          padding: "20px 22px",
-                          minHeight: 150,
+                          padding: "24px 26px",
+                          minHeight: 180,
                         }}
                         onClick={() => navigate(`/case/${s.case_id}/profile`)}
                         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
@@ -650,6 +779,40 @@ export default function Dashboard() {
                   })}
                 </div>
               )
+            )}
+
+            {/* Recent Activity Feed */}
+            {recentActivity.length > 0 && (
+              <div className="mt-10">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Activity size={15} color="#09BC8A" />
+                  <span className="text-[15px] font-semibold text-white">Recent Activity</span>
+                  <span className="text-[11px] font-mono" style={{ color: "#444" }}>{recentActivity.length} events</span>
+                </div>
+                <div className="surface" style={{ background: "#111", border: "1px solid #1e1e1e", padding: 0, overflow: "hidden" }}>
+                  {recentActivity.slice(0, 15).map((item, i) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 px-5 py-3 transition-colors cursor-pointer"
+                      style={{ borderBottom: i < Math.min(recentActivity.length, 15) - 1 ? "1px solid #1a1a1a" : "none" }}
+                      onClick={() => item.caseId && navigate(`/case/${item.caseId}/profile`)}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#151515")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <div className="flex items-center justify-center w-7 h-7 rounded-full shrink-0" style={{ background: activityIconBg(item.type) }}>
+                        {activityIcon(item.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] text-white truncate">{item.label}</div>
+                        <div className="text-[11px] font-mono truncate" style={{ color: "#444" }}>{item.caseName}</div>
+                      </div>
+                      <div className="text-[11px] font-mono shrink-0" style={{ color: "#333" }}>
+                        {formatActivityTime(item.time)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </>
         )}

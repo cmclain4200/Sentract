@@ -6,6 +6,7 @@ import ModuleWrapper from "../components/ModuleWrapper";
 import { calculateCompleteness } from "../lib/profileCompleteness";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../contexts/NotificationContext";
 import { useEngine, buildHeatmapFromRoutines } from "../engine";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -38,8 +39,9 @@ function threatLevel(consistency) {
 
 
 export default function PatternLens() {
-  const { subject } = useOutletContext();
+  const { subject, caseData } = useOutletContext();
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const engine = useEngine();
   const profileData = subject?.profile_data || {};
   const completeness = calculateCompleteness(profileData);
@@ -118,6 +120,13 @@ export default function PatternLens() {
 
         if (saved) setSavedAnalyses((prev) => [saved, ...prev]);
       }
+
+      notify({
+        type: "pattern_lens",
+        title: "Pattern Lens complete",
+        message: "Behavioral analysis ready",
+        link: caseData?.id ? `/case/${caseData.id}/patterns` : undefined,
+      });
     } catch (err) {
       if (err.name === "AbortError") return;
       setError(err.message);

@@ -199,3 +199,69 @@ create trigger update_assessments_updated_at
 create trigger update_profiles_updated_at
   before update on public.profiles
   for each row execute procedure public.update_updated_at();
+
+-- ============================================
+-- 6. MONITORING CONFIGS
+-- ============================================
+create table if not exists public.monitoring_configs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null default auth.uid(),
+  subject_id uuid references public.subjects on delete cascade not null,
+  check_type text default 'breach',
+  frequency_hours integer default 168,
+  enabled boolean default true,
+  last_checked_at timestamptz,
+  next_check_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table public.monitoring_configs enable row level security;
+
+create policy "Users can view own monitoring configs"
+  on public.monitoring_configs for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create monitoring configs"
+  on public.monitoring_configs for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own monitoring configs"
+  on public.monitoring_configs for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own monitoring configs"
+  on public.monitoring_configs for delete
+  using (auth.uid() = user_id);
+
+-- ============================================
+-- 7. MONITORING ALERTS
+-- ============================================
+create table if not exists public.monitoring_alerts (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null default auth.uid(),
+  subject_id uuid references public.subjects on delete cascade not null,
+  alert_type text default 'new_breach',
+  title text not null,
+  detail text,
+  data jsonb,
+  read boolean default false,
+  created_at timestamptz default now()
+);
+
+alter table public.monitoring_alerts enable row level security;
+
+create policy "Users can view own monitoring alerts"
+  on public.monitoring_alerts for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create monitoring alerts"
+  on public.monitoring_alerts for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own monitoring alerts"
+  on public.monitoring_alerts for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own monitoring alerts"
+  on public.monitoring_alerts for delete
+  using (auth.uid() = user_id);

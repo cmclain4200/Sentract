@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import { createSentractEngine, EngineProvider } from "./engine";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <NotificationProvider>
         <EngineProvider value={engine}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -54,6 +56,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         </EngineProvider>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

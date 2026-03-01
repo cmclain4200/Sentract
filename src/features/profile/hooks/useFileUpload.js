@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { extractTextFromFile, isAcceptedFile } from "../../../lib/fileExtractor";
 import { buildExtractionSummary, mergeExtractedIntoProfile } from "../../../lib/profileExtractor";
 import { useEngine } from "../../../engine";
+import { useNotifications } from "../../../contexts/NotificationContext";
 
 // Module-level cache: persists extraction state across unmount/remount per subject
 const extractionCache = new Map();
 
-export default function useFileUpload(subjectId) {
+export default function useFileUpload(subjectId, caseId) {
   const engine = useEngine();
+  const { notify } = useNotifications();
   const [uploadState, setUploadState] = useState("idle");
   const [uploadError, setUploadError] = useState(null);
   const [extractionResult, setExtractionResult] = useState(null);
@@ -93,6 +95,12 @@ export default function useFileUpload(subjectId) {
       }
       setExtractionResult(result);
       setUploadState("review");
+      notify({
+        type: "extraction",
+        title: "File extraction complete",
+        message: result.fileName,
+        link: caseId ? `/case/${caseId}/profile` : undefined,
+      });
     } catch (err) {
       if (subjectId) {
         extractionCache.set(subjectId, { status: "error", error: err.message });
