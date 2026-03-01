@@ -26,31 +26,32 @@ export default async function handler(req, res) {
   }
 
   const { invitation_id } = req.body;
-  if (!invitation_id) {
-    return res.status(400).json({ error: "invitation_id is required" });
+
+  // Find invitation: by ID if provided, otherwise by email
+  let invitation;
+  if (invitation_id) {
+    const { data } = await supabase
+      .from("invitations")
+      .select("*")
+      .eq("id", invitation_id)
+      .eq("status", "pending")
+      .single();
+    invitation = data;
+  } else {
+    const { data } = await supabase
+      .from("invitations")
+      .select("*")
+      .eq("email", user.email)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    invitation = data;
   }
-
-  // Check user doesn't already have an org
-  const { data: existing } = await supabase
-    .from("org_members")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (existing) {
-    return res.status(400).json({ error: "User already belongs to an organization" });
-  }
-
-  // Fetch the invitation
-  const { data: invitation } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("id", invitation_id)
-    .eq("status", "pending")
-    .single();
 
   if (!invitation) {
-    return res.status(404).json({ error: "Invitation not found or expired" });
+    return res.status(404).json({ error: "No pending invitation found" });
   }
 
   if (invitation.email !== user.email) {
@@ -58,11 +59,55 @@ export default async function handler(req, res) {
   }
 
   if (new Date(invitation.expires_at) < new Date()) {
-    await supabase.from("invitations").update({ status: "expired" }).eq("id", invitation_id);
+    await supabase.from("invitations").update({ status: "expired" }).eq("id", invitation.id);
     return res.status(410).json({ error: "Invitation has expired" });
   }
 
-  // Add to org
+  // Check if user already belongs to the invited org
+  const { data: existingInOrg } = await supabase
+    .from("org_members")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("org_id", invitation.org_id)
+    .single();
+
+  if (existingInOrg) {
+    // Already in the right org — just mark invitation as accepted
+    await supabase.from("invitations").update({
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    }).eq("id", invitation.id);
+    return res.status(200).json({ success: true, already_member: true });
+  }
+
+  // Check if user has an existing org membership (auto-created org from trigger)
+  const { data: existing } = await supabase
+    .from("org_members")
+    .select("id, org_id, roles(name)")
+    .eq("user_id", user.id)
+    .single();
+
+  if (existing) {
+    // Check if this is an auto-created org (user is only member and is owner)
+    const { count } = await supabase
+      .from("org_members")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", existing.org_id);
+
+    if (count === 1 && existing.roles?.name === "org_owner") {
+      // Safe to clean up the auto-created org — remove membership, teams, roles, org
+      await supabase.from("team_members").delete().eq("user_id", user.id);
+      await supabase.from("org_members").delete().eq("id", existing.id);
+      // Delete teams, roles, then the org itself
+      await supabase.from("teams").delete().eq("org_id", existing.org_id);
+      await supabase.from("roles").delete().eq("org_id", existing.org_id);
+      await supabase.from("organizations").delete().eq("id", existing.org_id);
+    } else {
+      return res.status(400).json({ error: "User already belongs to an organization with other members" });
+    }
+  }
+
+  // Add to invited org
   const { error: memberErr } = await supabase.from("org_members").insert({
     user_id: user.id,
     org_id: invitation.org_id,
@@ -89,7 +134,7 @@ export default async function handler(req, res) {
   await supabase.from("invitations").update({
     status: "accepted",
     accepted_at: new Date().toISOString(),
-  }).eq("id", invitation_id);
+  }).eq("id", invitation.id);
 
   return res.status(200).json({ success: true });
 }

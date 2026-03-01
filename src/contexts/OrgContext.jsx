@@ -23,6 +23,30 @@ export function OrgProvider({ children }) {
     }
 
     try {
+      // Check for pending invitations and accept them before loading org data.
+      // This handles cases where handle_new_user trigger missed the invitation.
+      const session = (await supabase.auth.getSession()).data.session;
+      if (session?.access_token) {
+        try {
+          const resp = await fetch("/api/accept-invitation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({}),
+          });
+          if (resp.ok) {
+            const result = await resp.json();
+            if (result.success && !result.already_member) {
+              // Invitation was accepted — org data changed, continue loading fresh data
+            }
+          }
+        } catch {
+          // Ignore — no pending invitation or network error
+        }
+      }
+
       // Fetch org membership with role and org in one query
       const { data: memberData } = await supabase
         .from("org_members")
