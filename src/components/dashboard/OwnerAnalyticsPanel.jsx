@@ -140,8 +140,9 @@ export default function OwnerAnalyticsPanel() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#0a0a0a", border: "1px solid #1e1e1e", borderRadius: "6px", fontSize: "12px", color: "#fff", padding: "8px 12px" }}
                     formatter={(value) => [value, "Count"]}
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
                   />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} activeBar={{ stroke: "#333", strokeWidth: 1 }}>
                     {pipelineData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
@@ -165,8 +166,9 @@ export default function OwnerAnalyticsPanel() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#0a0a0a", border: "1px solid #1e1e1e", borderRadius: "6px", fontSize: "12px", color: "#fff", padding: "8px 12px" }}
                     formatter={(value) => [value, "Assessments"]}
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
                   />
-                  <Bar dataKey="count" fill="#09BC8A" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#09BC8A" radius={[4, 4, 0, 0]} activeBar={{ stroke: "#333", strokeWidth: 1 }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

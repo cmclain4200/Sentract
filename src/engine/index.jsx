@@ -7,7 +7,7 @@ import { streamChat } from './modules/chat';
 import { simulateCountermeasures } from './modules/simulation';
 
 // Re-export core functions for convenience
-export { calculateAegisScore, buildScoreDrivers, buildRemediationOptions, simulateRemediation } from './core/aegisScore';
+export { calculateAegisScore, buildScoreDrivers, buildRemediationOptions, simulateRemediation, normalizeConsistency } from './core/aegisScore';
 export { fetchAllUserSubjects, detectOverlaps } from './core/crosswire';
 export { profileToPromptText, countDataPoints } from './core/profileToPrompt';
 export { calculateCompleteness } from './core/profileCompleteness';

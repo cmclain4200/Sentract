@@ -474,13 +474,15 @@ export default function Dashboard() {
             <div className="text-[15px] mb-8" style={{ color: "#555" }}>
               Create your first case to get started.
             </div>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="rounded-md text-[15px] font-semibold cursor-pointer"
-              style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "14px 32px", minHeight: 48 }}
-            >
-              Create Case
-            </button>
+            {can("create_case") && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="rounded-md text-[15px] font-semibold cursor-pointer"
+                style={{ background: "#09BC8A", color: "#0a0a0a", border: "none", padding: "14px 32px", minHeight: 48 }}
+              >
+                Create Case
+              </button>
+            )}
           </div>
         ) : (
           <>

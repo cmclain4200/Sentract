@@ -1,3 +1,8 @@
+export function normalizeConsistency(val) {
+  if (val == null) return 0;
+  return val > 1 ? val : val * 100;
+}
+
 export function calculateAegisScore(profileData) {
   if (!profileData) return defaultScore();
   const pd = profileData;
@@ -18,9 +23,9 @@ export function calculateAegisScore(profileData) {
   const routines = pd.behavioral?.routines || [];
   const observations = pd.behavioral?.observations || [];
   const highExploitObs = observations.filter((o) => o.exploitability === 'high');
-  const avgConsistency = routines.length > 0 ? routines.reduce((sum, r) => sum + (r.consistency || 0), 0) / routines.length : 0;
+  const avgConsistency = routines.length > 0 ? routines.reduce((sum, r) => sum + normalizeConsistency(r.consistency), 0) / routines.length : 0;
   const hasGpsData = pd.digital?.social_accounts?.some((a) => a.platform?.toLowerCase().includes('strava') || a.notes?.toLowerCase().includes('gps')) ? 1 : 0;
-  const behavioralScore = Math.min(100, avgConsistency * 80 + routines.length * 5 + hasGpsData * 15 + observations.length * 3 + highExploitObs.length * 8);
+  const behavioralScore = Math.min(100, avgConsistency * 0.8 + routines.length * 5 + hasGpsData * 15 + observations.length * 3 + highExploitObs.length * 8);
 
   // Factor 4: Physical OPSEC (15%)
   const confirmedAddresses = pd.locations?.addresses?.filter((a) => a.confidence === 'confirmed')?.length || 0;
@@ -78,8 +83,9 @@ export function buildScoreDrivers(pd) {
 
   const routines = pd.behavioral?.routines || [];
   routines.forEach((r) => {
-    if (r.consistency > 0.7) {
-      drivers.push({ text: `${r.name}: ${Math.round(r.consistency * 100)}% predictability`, impact: Math.round(r.consistency * 10), category: 'behavioral' });
+    const c = normalizeConsistency(r.consistency);
+    if (c > 70) {
+      drivers.push({ text: `${r.name}: ${Math.round(c)}% predictability`, impact: Math.round(c / 10), category: 'behavioral' });
     }
   });
 
@@ -217,7 +223,9 @@ export function buildRemediationOptions(profileData) {
 
   // ── Physical Security ──
 
-  const addresses = profileData.locations?.addresses || [];
+  const addresses = (profileData.locations?.addresses || []).filter(
+    (a) => a.type !== 'previous' && a.status !== 'historical'
+  );
   addresses.forEach((addr, i) => {
     const locLabel = [addr.city, addr.state].filter(Boolean).join(', ') || `Address ${i + 1}`;
     const typeLabel = addr.type || 'address';

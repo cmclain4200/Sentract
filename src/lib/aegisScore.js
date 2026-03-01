@@ -1,1 +1,1 @@
-export { calculateAegisScore, buildScoreDrivers, buildRemediationOptions, simulateRemediation } from '../engine/core/aegisScore';
+export { calculateAegisScore, buildScoreDrivers, buildRemediationOptions, simulateRemediation, normalizeConsistency } from '../engine/core/aegisScore';

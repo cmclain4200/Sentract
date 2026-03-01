@@ -16,6 +16,8 @@ export function detectOverlaps(currentSubject, allSubjects) {
 
   for (const other of allSubjects) {
     if (other.id === currentSubject.id) continue;
+    if (!other.name || other.name.length < 5) continue;
+    if (!other.profile_data || Object.keys(other.profile_data).length === 0) continue;
     const otherData = other.profile_data || {};
     const matches = [];
 
