@@ -1161,13 +1161,13 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
       <div
         className="w-full fade-in"
         style={{
-          maxWidth: selectedTemplate === null ? 680 : 520,
-          padding: "32px 36px",
+          maxWidth: selectedTemplate === null ? 660 : 520,
+          padding: "28px 32px",
           transition: "max-width 0.2s ease",
           background: "#111",
-          border: "1px solid #222",
-          borderRadius: 12,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03)",
+          border: "1px solid #1e1e1e",
+          borderRadius: 6,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1175,12 +1175,12 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[10px] font-mono tracking-widest" style={{ color: "#09BC8A" }}>NEW CASE</span>
-            <h2 className="text-white text-[22px] font-semibold mt-1">Create Case</h2>
+            <h2 className="text-white text-[20px] font-semibold mt-1">Create Case</h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded cursor-pointer flex items-center justify-center transition-colors"
-            style={{ background: "transparent", border: "1px solid transparent", width: 36, height: 36 }}
+            className="flex items-center justify-center cursor-pointer transition-colors"
+            style={{ background: "transparent", border: "none", width: 28, height: 28, borderRadius: 4 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
@@ -1191,7 +1191,7 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
         <div style={{ borderTop: "1px solid #1e1e1e", margin: "20px 0 24px" }} />
 
         {error && (
-          <div className="mb-5 p-4 rounded text-[14px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}>
+          <div className="mb-5 p-4 rounded text-[13px]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 6 }}>
             {error}
           </div>
         )}
@@ -1199,8 +1199,8 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
         {/* Template Selection Step */}
         {selectedTemplate === null ? (
           <div>
-            <p className="text-[13px] mb-5" style={{ color: "#666" }}>Select a template to get started</p>
-            <div className="grid grid-cols-2 gap-4" style={{ marginBottom: 20 }}>
+            <p className="text-[13px] mb-5" style={{ color: "#555" }}>Select a template to get started</p>
+            <div className="grid grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
               {CASE_TEMPLATES.map((t) => (
                 <button
                   key={t.id}
@@ -1209,12 +1209,13 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
                     setType(t.type);
                     setDescription(t.description + "\n\n---\nChecklist:\n" + t.checklist.map((c) => `- [ ] ${c}`).join("\n"));
                   }}
-                  className="rounded-lg text-left cursor-pointer transition-all"
+                  className="text-left cursor-pointer transition-all"
                   style={{
-                    background: "#0a0a0a",
+                    background: "#111",
                     border: "1px solid #1e1e1e",
                     borderLeft: `3px solid ${typeColor(t.type)}40`,
-                    padding: "18px 20px",
+                    borderRadius: 6,
+                    padding: "20px 22px",
                     minHeight: 110,
                     display: "flex",
                     flexDirection: "column",
@@ -1222,34 +1223,33 @@ function CreateCaseModal({ onClose, onCreated, userId, teams = [] }) {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "#333";
                     e.currentTarget.style.borderLeftColor = typeColor(t.type);
-                    e.currentTarget.style.background = "#0d0d0d";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = "#1e1e1e";
                     e.currentTarget.style.borderLeftColor = `${typeColor(t.type)}40`;
-                    e.currentTarget.style.background = "#0a0a0a";
                   }}
                 >
-                  <div className="text-[14px] font-semibold text-white mb-2" style={{ lineHeight: 1.3 }}>{t.name}</div>
-                  <div className="text-[12px] line-clamp-2" style={{ color: "#666", lineHeight: 1.5, flex: 1 }}>{t.description}</div>
+                  <div className="text-[15px] font-semibold text-white mb-2" style={{ lineHeight: 1.3 }}>{t.name}</div>
+                  <div className="text-[13px] line-clamp-2" style={{ color: "#555", lineHeight: 1.5, flex: 1 }}>{t.description}</div>
                 </button>
               ))}
             </div>
             <button
               onClick={() => setSelectedTemplate("blank")}
-              className="w-full flex items-center justify-center gap-2 rounded-md cursor-pointer transition-all"
+              className="w-full flex items-center justify-center cursor-pointer transition-colors"
               style={{
                 background: "transparent",
-                border: "1px dashed #2a2a2a",
-                padding: "12px 16px",
+                border: "1px dashed #1e1e1e",
+                borderRadius: 6,
+                padding: "11px 16px",
                 color: "#555",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#444";
+                e.currentTarget.style.borderColor = "#333";
                 e.currentTarget.style.color = "#888";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#2a2a2a";
+                e.currentTarget.style.borderColor = "#1e1e1e";
                 e.currentTarget.style.color = "#555";
               }}
             >
