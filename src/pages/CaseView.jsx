@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Outlet, Navigate } from "react-router-dom";
 import { Plus, User, Users, FileDown, EyeOff, Eye, Trash2, AlertTriangle, MoreVertical, MessageSquare, ChevronDown, Pencil, Lock, Unlock, Shield, CheckSquare, Square } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -16,7 +16,7 @@ import CaseAssignmentModal from "../components/CaseAssignmentModal";
 export default function CaseView() {
   const { caseId } = useParams();
   const { user } = useAuth();
-  const { can, role, isRole } = useOrg();
+  const { can, role, isRole, teams } = useOrg();
   const [caseData, setCaseData] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [activeSubject, setActiveSubject] = useState(null);
@@ -34,6 +34,11 @@ export default function CaseView() {
   const [showClosureModal, setShowClosureModal] = useState(false);
   const [showAssignment, setShowAssignment] = useState(false);
   const [orgMembers, setOrgMembers] = useState([]);
+
+  const teamName = useMemo(() => {
+    if (!caseData?.team_id || !teams?.length) return null;
+    return teams.find((t) => t.id === caseData.team_id)?.name || null;
+  }, [caseData?.team_id, teams]);
 
   const fetchSubjects = useCallback(async () => {
     const { data: sData, error: sErr } = await supabase
@@ -167,6 +172,11 @@ export default function CaseView() {
             <Lock size={13} color="#ef4444" />
             <span className="text-[13px] font-semibold" style={{ color: "#ef4444" }}>CASE CLOSED</span>
             <span className="text-[11px] font-mono" style={{ color: "#555" }}>{caseData.name}</span>
+            {teamName && (
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded" style={{ color: "#3b82f6", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                {teamName}
+              </span>
+            )}
           </div>
         )}
 
@@ -176,6 +186,11 @@ export default function CaseView() {
             className="flex items-center gap-3 px-6 shrink-0 flex-wrap"
             style={{ borderBottom: "1px solid #1a1a1a", background: "#0a0a0a", minHeight: 48, padding: "8px 24px" }}
           >
+            {teamName && (
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded mr-2" style={{ color: "#3b82f6", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                {teamName}
+              </span>
+            )}
             <span className="sub-label mr-1" style={{ color: "#444" }}>Subject</span>
             {visibleSubjects.map((s) => (
               <div key={s.id} className="relative flex items-center" style={{ zIndex: subjectMenu === s.id ? 50 : undefined }}>

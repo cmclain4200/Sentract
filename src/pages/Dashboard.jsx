@@ -44,7 +44,8 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { can, isRole, isOrgOwner, myTeams } = useOrg();
+  const { can, isRole, isOrgOwner, myTeams, teams } = useOrg();
+  const [teamFilter, setTeamFilter] = useState("all");
   const [assignedCaseIds, setAssignedCaseIds] = useState(null);
 
   useEffect(() => {
@@ -222,7 +223,10 @@ export default function Dashboard() {
   const filteredByRole = isRole("analyst") && assignedCaseIds
     ? filteredByStatus.filter((c) => assignedCaseIds.has(c.id))
     : filteredByStatus;
-  const visibleCases = showHidden ? filteredByRole : filteredByRole.filter((c) => c.status !== "archived");
+  const filteredByTeam = teamFilter === "all"
+    ? filteredByRole
+    : filteredByRole.filter((c) => c.team_id === teamFilter);
+  const visibleCases = showHidden ? filteredByTeam : filteredByTeam.filter((c) => c.status !== "archived");
 
   // Priority map for cases
   const casePriorities = useMemo(() => {
@@ -232,6 +236,12 @@ export default function Dashboard() {
     }
     return map;
   }, [cases, aegisScores]);
+
+  const teamMap = useMemo(() => {
+    const map = {};
+    for (const t of teams || []) map[t.id] = t;
+    return map;
+  }, [teams]);
 
   // Sort visible cases - closed always at bottom unless filtered
   const sortedCases = useMemo(() => {
@@ -520,6 +530,28 @@ export default function Dashboard() {
                   </>
                 )}
                 <div className="ml-auto flex items-center gap-2">
+                  {(teams || []).length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setTeamFilter("all")}
+                        className="text-[11px] font-mono cursor-pointer px-2 py-1 rounded"
+                        style={{ background: teamFilter === "all" ? "#1a1a1a" : "transparent", border: "none", color: teamFilter === "all" ? "#3b82f6" : "#444" }}
+                      >
+                        All Teams
+                      </button>
+                      {(teams || []).map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setTeamFilter(t.id)}
+                          className="text-[11px] font-mono cursor-pointer px-2 py-1 rounded"
+                          style={{ background: teamFilter === t.id ? "#1a1a1a" : "transparent", border: "none", color: teamFilter === t.id ? "#3b82f6" : "#444" }}
+                        >
+                          {t.name}
+                        </button>
+                      ))}
+                      <span style={{ color: "#2a2a2a" }}>|</span>
+                    </>
+                  )}
                   <Filter size={11} color="#444" />
                   {["active", "closed", "all"].map((f) => (
                     <button
@@ -736,6 +768,16 @@ export default function Dashboard() {
 
                     {/* Title */}
                     <div className="text-white font-semibold text-[16px] mb-1 leading-snug">{c.name}</div>
+
+                    {/* Team badge */}
+                    {c.team_id && teamMap[c.team_id] && (
+                      <span
+                        className="inline-block text-[10px] font-mono font-semibold px-2 py-0.5 rounded mb-1"
+                        style={{ color: "#3b82f6", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
+                      >
+                        {teamMap[c.team_id].name}
+                      </span>
+                    )}
 
                     {/* Primary subject name */}
                     {primarySubject?.name && primarySubject.name !== c.name && (
