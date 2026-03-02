@@ -477,7 +477,7 @@ export default function Dashboard() {
             <span className="pulse-dot" />
             <span className="pulse-dot" />
           </div>
-        ) : visibleCases.length === 0 && hiddenCount === 0 ? (
+        ) : visibleCases.length === 0 && hiddenCount === 0 && teamFilter === "all" ? (
           <div className="surface text-center" style={{ padding: "48px 32px" }}>
             <Briefcase size={44} color="#333" className="mx-auto mb-4" />
             <div className="text-[20px] text-white font-semibold mb-3">No cases yet</div>
