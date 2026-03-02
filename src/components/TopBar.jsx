@@ -20,7 +20,7 @@ function typeColor(type) {
 
 export default function TopBar() {
   const { user, profile, signOut } = useAuth();
-  const { org, role, can, isOrgOwner, isRole } = useOrg();
+  const { org, role, isRole } = useOrg();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -269,20 +269,18 @@ export default function TopBar() {
                   Settings
                 </span>
               </button>
-              {(can("manage_teams") || can("invite_member") || isOrgOwner()) && (
-                <button
-                  onClick={() => { navigate("/settings/team"); setOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
-                  style={{ background: "transparent", border: "none", minHeight: 42, padding: "0 16px" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <Users size={15} color="#888" />
-                  <span className="text-[14px]" style={{ color: "#888" }}>
-                    Team
-                  </span>
-                </button>
-              )}
+              <button
+                onClick={() => { navigate("/settings/team"); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
+                style={{ background: "transparent", border: "none", minHeight: 42, padding: "0 16px" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <Users size={15} color="#888" />
+                <span className="text-[14px]" style={{ color: "#888" }}>
+                  Team
+                </span>
+              </button>
               <button
                 onClick={handleSignOut}
                 className="w-full flex items-center gap-2.5 px-4 text-left transition-all duration-150 cursor-pointer"
