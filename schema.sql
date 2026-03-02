@@ -299,6 +299,7 @@ create table if not exists public.invitations (
   email text not null,
   org_id uuid references public.organizations on delete cascade not null,
   team_id uuid references public.teams on delete set null,
+  team_ids uuid[] default '{}',
   role_id uuid references public.roles on delete restrict not null,
   status text default 'pending' check (status in ('pending', 'accepted', 'expired', 'revoked')),
   invited_by uuid references auth.users on delete set null,
@@ -492,15 +493,27 @@ declare
   v_org_id uuid;
   v_owner_role_id uuid;
   v_team_id uuid;
+  v_tid uuid;
   v_slug text;
   v_counter int := 0;
 begin
-  select * into v_invitation from public.invitations where email = new.email and status = 'pending' and expires_at > now() order by created_at desc limit 1;
+  -- Try metadata invitation_id first, then email match
+  if new.raw_user_meta_data->>'invitation_id' is not null then
+    select * into v_invitation from public.invitations where id = (new.raw_user_meta_data->>'invitation_id')::uuid and status = 'pending' and expires_at > now() limit 1;
+  end if;
+  if v_invitation is null then
+    select * into v_invitation from public.invitations where lower(email) = lower(new.email) and status = 'pending' and expires_at > now() order by created_at desc limit 1;
+  end if;
 
   if v_invitation is not null then
     insert into public.profiles (id, full_name, organization, org_id) values (new.id, coalesce(new.raw_user_meta_data->>'full_name', ''), (select name from public.organizations where id = v_invitation.org_id), v_invitation.org_id);
     insert into public.org_members (user_id, org_id, role_id) values (new.id, v_invitation.org_id, v_invitation.role_id);
-    if v_invitation.team_id is not null then
+    -- Add to multiple teams if team_ids is set
+    if v_invitation.team_ids is not null and array_length(v_invitation.team_ids, 1) > 0 then
+      foreach v_tid in array v_invitation.team_ids loop
+        insert into public.team_members (user_id, team_id, added_by) values (new.id, v_tid, v_invitation.invited_by);
+      end loop;
+    elsif v_invitation.team_id is not null then
       insert into public.team_members (user_id, team_id, added_by) values (new.id, v_invitation.team_id, v_invitation.invited_by);
     end if;
     update public.invitations set status = 'accepted', accepted_at = now() where id = v_invitation.id;

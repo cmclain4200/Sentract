@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await supabase
     .from("invitations")
-    .select("id, email, status, expires_at, org_id, role_id, organizations(name), roles(name)")
+    .select("id, email, status, expires_at, org_id, role_id, team_ids, organizations(name), roles(name)")
     .eq("id", id)
     .single();
 
@@ -32,11 +32,22 @@ export default async function handler(req, res) {
   const expired = new Date(data.expires_at) < new Date();
   const valid = data.status === "pending" && !expired;
 
+  // Resolve team names from team_ids
+  let teamNames = [];
+  if (data.team_ids?.length) {
+    const { data: teams } = await supabase
+      .from("teams")
+      .select("name")
+      .in("id", data.team_ids);
+    teamNames = (teams || []).map((t) => t.name);
+  }
+
   return res.status(200).json({
     id: data.id,
     email: data.email,
     orgName: data.organizations?.name || null,
     roleName: data.roles?.name || null,
+    teamNames,
     status: expired ? "expired" : data.status,
     valid,
   });

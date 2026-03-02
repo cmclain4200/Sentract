@@ -16,7 +16,7 @@ export default function InviteMemberModal({ orgId, orgName, roles, teams, onClos
   const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState(roles.find((r) => r.name === "analyst")?.id || roles[0]?.id || "");
-  const [teamId, setTeamId] = useState(teams[0]?.id || "");
+  const [selectedTeamIds, setSelectedTeamIds] = useState(new Set(teams.length === 1 ? [teams[0].id] : []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [inviteUrl, setInviteUrl] = useState(null);
@@ -27,11 +27,13 @@ export default function InviteMemberModal({ orgId, orgName, roles, teams, onClos
     setLoading(true);
     setError(null);
 
+    const teamIdsArray = [...selectedTeamIds];
     const { data, error: err } = await supabase.from("invitations").insert({
       email: email.trim().toLowerCase(),
       org_id: orgId,
       role_id: roleId,
-      team_id: teamId || null,
+      team_id: teamIdsArray[0] || null,
+      team_ids: teamIdsArray,
       invited_by: user.id,
     }).select().single();
 
@@ -170,19 +172,37 @@ export default function InviteMemberModal({ orgId, orgName, roles, teams, onClos
               </select>
             </div>
 
-            {teams.length > 1 && (
+            {teams.length > 0 && (
               <div>
-                <label className="sub-label block mb-2">Team</label>
-                <select
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                  className="w-full rounded text-[15px] text-white outline-none"
-                  style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", padding: "10px 14px", minHeight: 44 }}
-                >
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+                <label className="sub-label block mb-2">Teams</label>
+                <div className="flex flex-wrap gap-2">
+                  {teams.map((t) => {
+                    const selected = selectedTeamIds.has(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTeamIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(t.id)) next.delete(t.id);
+                            else next.add(t.id);
+                            return next;
+                          });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded text-[13px] font-semibold cursor-pointer transition-all duration-150"
+                        style={{
+                          background: selected ? "rgba(9,188,138,0.12)" : "#111",
+                          border: `1px solid ${selected ? "#09BC8A" : "#1e1e1e"}`,
+                          color: selected ? "#09BC8A" : "#555",
+                        }}
+                      >
+                        {selected && <Check size={12} />}
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

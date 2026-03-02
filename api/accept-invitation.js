@@ -121,11 +121,12 @@ export default async function handler(req, res) {
   // Update profile with org_id
   await supabase.from("profiles").update({ org_id: invitation.org_id }).eq("id", user.id);
 
-  // Add to team if specified
-  if (invitation.team_id) {
+  // Add to teams
+  const teamIds = invitation.team_ids?.length ? invitation.team_ids : invitation.team_id ? [invitation.team_id] : [];
+  for (const tid of teamIds) {
     await supabase.from("team_members").insert({
       user_id: user.id,
-      team_id: invitation.team_id,
+      team_id: tid,
       added_by: invitation.invited_by,
     });
   }
